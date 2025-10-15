@@ -11,7 +11,7 @@ app.listen(9012, () => {
 });
 const routesDir = path.join(__dirname, 'routes');
 const apiList = [];
-global.t = 'https://takamura-xi.vercel.app';
+global.t = 'https://obito-mr-apis.vercel.app/';
 // تحميل جميع الـ API ديناميكيًا
 fs.readdirSync(routesDir).forEach((file) => {
   const route = require(path.join(routesDir, file));
