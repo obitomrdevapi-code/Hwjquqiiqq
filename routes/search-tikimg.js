@@ -58,5 +58,6 @@ module.exports = {
     type: "search",
     url: `${global.t}/api/search/tik-img?keywords=shanks`,
     logo: "https://files.catbox.moe/75scb9.jpg",
+    description: "بحث عن الصور في تيك توك",
     router,
 };
