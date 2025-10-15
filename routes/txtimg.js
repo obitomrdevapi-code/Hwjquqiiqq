@@ -15,7 +15,7 @@ const decryptToken = () => {
 ).join('');
 };
 
-router.get('/ai-image', async (req, res) => {
+router.get('/txt2img', async (req, res) => {
   const { txt} = req.query;
   if (!txt ||!txt.trim()) {
     return res.status(400).json({ code: 1, msg: 'يرجى إدخال وصف الصورة عبر?txt='});
@@ -53,8 +53,8 @@ router.get('/ai-image', async (req, res) => {
 module.exports = {
   path: "/api/ai",
   name: "AI Image Generator",
-  type: "image",
-  url: `${global.t}/api/ai/ai-image?txt=قصر في السماء`,
+  type: "ai",
+  url: `${global.t}/api/ai/txt2img?txt=قصر في السماء`,
   logo: "https://files.catbox.moe/aiimage.jpg",
   description: "تحويل وصف نصي إلى صورة باستخدام نموذج text2img من aritek.",
   router
