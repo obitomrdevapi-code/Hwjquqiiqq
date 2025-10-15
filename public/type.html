@@ -1,200 +1,450 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TAKAMURA-API</title>
+    <title>OBITO APIS - فئة الواجهات</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <style>
-        /* خلفية الصفحة */
-        body {
-            font-family: 'Arial', sans-serif;
-            text-align: center;
-            background: linear-gradient(135deg, #0a0027, #22004d, #66008d);
-            color: white;
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #3b82f6;
+            --secondary: #7e22ce;
+            --secondary-dark: #6b21a8;
+            --dark: #0f172a;
+            --dark-light: #1e293b;
+            --text: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border-radius: 12px;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s ease;
+        }
+
+        * {
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            box-sizing: border-box;
+            font-family: "Cairo", sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark), var(--dark-light));
+            color: var(--text);
             min-height: 100vh;
-            overflow-x: hidden;
+            line-height: 1.6;
         }
 
-        /* العنوان الرئيسي */
-        h1 {
-            margin-top: 20px;
-            font-size: 2.5em;
-            text-shadow: 0 0 15px #fff, 0 0 30px #ff00ff, 0 0 45px #ff00ff;
-            animation: glow 1.5s infinite alternate;
-        }
-
-        @keyframes glow {
-            from {
-                text-shadow: 0 0 10px #fff, 0 0 20px #ff00ff;
-            }
-            to {
-                text-shadow: 0 0 20px #fff, 0 0 40px #9400d3;
-            }
-        }
-
-        /* الحاوية */
         .container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            width: 90%;
-            margin-top: 30px;
-        }
-
-        /* صناديق API */
-        .api-box {
-            background: rgba(255, 255, 255, 0.12);
-            padding: 20px;
-            margin: 15px;
-            width: 320px;
-            border-radius: 12px;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 0 15px rgba(255, 0, 255, 0.6);
-            text-align: left;
-            position: relative;
-            overflow: hidden;
-            opacity: 0;
-            transform: translateY(40px);
-            transition: transform 0.6s ease-out, opacity 0.6s ease-out;
-        }
-
-        /* حركة الظهور والاختفاء */
-        .api-box.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .api-box.hide {
-            opacity: 0;
-            transform: translateY(40px);
-        }
-
-        /* صورة API */
-        .api-box img {
             width: 100%;
-            height: auto;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
 
-        /* عنوان API */
-        .api-box h2 {
-            font-size: 22px;
-            margin: 12px 0;
-            color: #ffffff;
-            text-shadow: 0 0 5px #fff, 0 0 15px #ff00ff;
+        /* Header Styles */
+        header {
+            padding: 1.5rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* الوصف */
-        .api-box p {
-            margin: 5px 0;
-            color: #ddd;
-            font-size: 15px;
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.7rem 1.2rem;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* زر الدخول */
-        .api-box a {
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .page-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .page-title h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .page-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(37, 99, 235, 0.1);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-top: 12px;
-            padding: 10px;
-            background: #ff00ff;
-            color: white;
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 2rem 0 4rem;
+        }
+
+        .apis-count {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .highlight {
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        /* APIs Grid */
+        .apis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .api-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+        }
+
+        .api-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .api-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .api-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .api-logo img {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            object-fit: cover;
+        }
+
+        .api-info h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .api-info p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .api-body {
+            padding: 1.5rem;
+        }
+
+        .api-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            margin-bottom: 1rem;
+        }
+
+        .api-detail i {
+            width: 20px;
+            color: var(--primary);
+        }
+
+        .api-detail span {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .api-detail .value {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .api-actions {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.7rem 1.2rem;
+            border-radius: 8px;
             text-decoration: none;
-            border-radius: 6px;
-            box-shadow: 0 0 15px #ff00ff;
-            transition: background 0.3s, box-shadow 0.3s;
+            font-weight: 500;
+            transition: var(--transition);
+            flex: 1;
+            justify-content: center;
         }
 
-        .api-box a i {
-            margin-left: 8px;
+        .btn-primary {
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
         }
 
-        .api-box a:hover {
-            background: #d400d4;
-            box-shadow: 0 0 20px #ff00ff, 0 0 35px #9400d3;
+        .btn-primary:hover {
+            background: linear-gradient(to right, var(--primary-dark), var(--primary));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(37, 99, 235, 0.4);
         }
 
-        /* إشعار عدم وجود APIs */
-        .no-data {
-            font-size: 18px;
-            color: #ff00ff;
-            margin-top: 20px;
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+            opacity: 0.5;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            
+            .apis-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .api-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .api-actions {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-btn">
+                <i class="fas fa-arrow-right"></i>
+                العودة للرئيسية
+            </a>
+            <div class="page-title">
+                <div class="page-icon">
+                    <i class="fas fa-cube" id="category-icon"></i>
+                </div>
+                <h1 id="page-title">فئة الواجهات</h1>
+            </div>
+        </header>
 
-    <h1 id="page-title">TAKAMURA-API</h1>
-    <div class="container" id="api-container">
-        <!-- سيتم تحميل الـ APIs هنا -->
+        <main class="main-content">
+            <div class="apis-count" id="apis-count">
+                جاري تحميل البيانات...
+            </div>
+            
+            <div class="apis-grid" id="apis-container">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>جاري تحميل واجهات البرمجة...</p>
+                </div>
+            </div>
+        </main>
     </div>
 
     <script>
+        // تحميل واجهات البرمجة بناءً على النوع
         async function loadAPIs() {
             const params = new URLSearchParams(window.location.search);
-            const apiType = params.get('type') || 'default';
-            document.getElementById('page-title').innerText = `${apiType.toUpperCase()}`;
-
+            const apiType = params.get('type') || 'عام';
+            
+            // تحديث عنوان الصفحة والأيقونة
+            document.getElementById('page-title').textContent = apiType;
+            
+            // تحديد الأيقونة المناسبة بناءً على نوع الفئة
+            const categoryIcon = document.getElementById('category-icon');
+            let iconClass = 'fas fa-cube';
+            
+            if (apiType.includes('ذكاء')) iconClass = 'fas fa-brain';
+            else if (apiType.includes('وسائط')) iconClass = 'fas fa-photo-video';
+            else if (apiType.includes('أدوات')) iconClass = 'fas fa-tools';
+            else if (apiType.includes('بيانات')) iconClass = 'fas fa-database';
+            else if (apiType.includes('أمن')) iconClass = 'fas fa-shield-alt';
+            
+            categoryIcon.className = iconClass;
+            
             try {
                 const response = await fetch('/api/list');
                 const data = await response.json();
-                const container = document.getElementById('api-container');
-
-                const filteredAPIs = data.filter(api => api.type === apiType);
-
-                if (filteredAPIs.length === 0) {
-                    container.innerHTML = `<p class="no-data">❌ لا توجد APIs من هذا النوع.</p>`;
-                } else {
-                    filteredAPIs.forEach(api => {
-                        const apiElement = document.createElement('div');
-                        apiElement.classList.add('api-box');
-
-                        apiElement.innerHTML = `
-                            <img src="${api.logo || 'https://via.placeholder.com/320'}" alt="Logo">
-                            <h2>${api.name}</h2>
-                            <p><strong>المسار:</strong> ${api.endpoint}</p>
-                            ${api.url ? `<a href="${api.url}" target="_blank">زيارة API <i class="fas fa-arrow-right"></i></a>` : ''}
-                        `;
-
-                        container.appendChild(apiElement);
-                    });
-
-                    // تفعيل التأثيرات عند التمرير
-                    observeBoxes();
+                const container = document.getElementById('apis-container');
+                const countElement = document.getElementById('apis-count');
+                
+                if (!data || data.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fas fa-inbox"></i>
+                            </div>
+                            <h3>لا توجد واجهات برمجة متاحة</h3>
+                            <p>لم يتم العثور على أي واجهات برمجة في هذا القسم.</p>
+                        </div>
+                    `;
+                    countElement.innerHTML = `عرض <span class="highlight">0</span> واجهة برمجة`;
+                    return;
                 }
+                
+                // تصفية الواجهات حسب النوع
+                const filteredAPIs = data.filter(api => api.type === apiType);
+                
+                // تحديث عدد الواجهات
+                countElement.innerHTML = `عرض <span class="highlight">${filteredAPIs.length}</span> واجهة برمجة`;
+                
+                if (filteredAPIs.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <h3>لا توجد واجهات في هذه الفئة</h3>
+                            <p>لم يتم العثور على واجهات برمجة تابعة لفئة "${apiType}".</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // إنشاء بطاقات الواجهات
+                container.innerHTML = '';
+                filteredAPIs.forEach(api => {
+                    const apiCard = document.createElement('div');
+                    apiCard.className = 'api-card';
+                    
+                    apiCard.innerHTML = `
+                        <div class="api-header">
+                            <div class="api-logo">
+                                ${api.logo ? `<img src="${api.logo}" alt="${api.name}">` : `<i class="fas fa-code"></i>`}
+                            </div>
+                            <div class="api-info">
+                                <h3>${api.name || 'واجهة غير معروفة'}</h3>
+                                <p>${api.description || 'وصف غير متوفر'}</p>
+                            </div>
+                        </div>
+                        <div class="api-body">
+                            <div class="api-detail">
+                                <i class="fas fa-link"></i>
+                                <span>المسار:</span>
+                                <span class="value">${api.endpoint || '/api/unknown'}</span>
+                            </div>
+                            <div class="api-detail">
+                                <i class="fas fa-cube"></i>
+                                <span>النوع:</span>
+                                <span class="value">${api.type || 'عام'}</span>
+                            </div>
+                            <div class="api-actions">
+                                ${api.url ? `<a href="${api.url}" target="_blank" class="btn btn-primary"><i class="fas fa-external-link-alt"></i> زيارة API</a>` : ''}
+                                <a href="#" class="btn btn-secondary"><i class="fas fa-code"></i> استعراض التوثيق</a>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.appendChild(apiCard);
+                });
             } catch (error) {
-                console.error('❌ خطأ في تحميل البيانات:', error);
+                console.error('Error loading APIs:', error);
+                document.getElementById('apis-container').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h3>خطأ في تحميل البيانات</h3>
+                        <p>حدث خطأ أثناء تحميل واجهات البرمجة. يرجى المحاولة لاحقاً.</p>
+                    </div>
+                `;
+                document.getElementById('apis-count').innerHTML = `خطأ في تحميل البيانات`;
             }
         }
 
-        function observeBoxes() {
-            const apiBoxes = document.querySelectorAll('.api-box');
-            const observer = new IntersectionObserver(entries => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('show');
-                        entry.target.classList.remove('hide');
-                    } else {
-                        entry.target.classList.add('hide');
-                        entry.target.classList.remove('show');
-                    }
-                });
-            }, { threshold: 0.2 });
-
-            apiBoxes.forEach(box => observer.observe(box));
-        }
-
-        loadAPIs();
+        // تحميل الواجهات عند بدء التشغيل
+        document.addEventListener('DOMContentLoaded', loadAPIs);
     </script>
-
 </body>
 </html>
