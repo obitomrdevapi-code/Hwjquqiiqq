@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAKAMURA API</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg-gradient: linear-gradient(135deg, #1f1c2c, #928dab);
+  --accent: #00bfff;
+  --text: #fff;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Cairo", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg-gradient);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.8s ease;
+  overflow-x: hidden;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+h1 {
+  font-size: 34px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-shadow: 0 0 10px rgba(255,255,255,0.3);
+}
+
+.subtitle {
+  opacity: 0.8;
+  font-size: 18px;
+}
+
+/* بطاقات الأنواع */
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px;
+  max-width: 700px;
+  padding: 10px;
+}
+
+.type-box {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 15px 25px;
+  border-radius: 14px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 18px;
+  backdrop-filter: blur(10px);
+  transition: transform 0.3s ease, background 0.4s;
+  min-width: 230px;
+  text-align: center;
+}
+
+.type-box:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* زر تخصيص الخلفية */
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 10px 15px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #fff;
+  backdrop-filter: blur(10px);
+  transition: background 0.3s;
+}
+
+.theme-toggle:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+/* قائمة اختيار الخلفيات */
+.theme-menu {
+  position: fixed;
+  top: 70px;
+  left: 20px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(15px);
+  display: none;
+  flex-direction: column;
+  padding: 10px;
+  z-index: 1000;
+}
+
+.theme-option {
+  width: 180px;
+  height: 40px;
+  border-radius: 8px;
+  margin: 5px 0;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.theme-option:hover {
+  transform: scale(1.05);
+}
+
+/* ألوان الخلفيات */
+.theme-dark { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }
+.theme-blue { background: linear-gradient(135deg, #1a2980, #26d0ce); }
+.theme-purple { background: linear-gradient(135deg, #654ea3, #eaafc8); }
+.theme-pink { background: linear-gradient(135deg, #ff758c, #ff7eb3); }
+.theme-green { background: linear-gradient(135deg, #11998e, #38ef7d); }
+
+/* شات البوت */
+.chatbot-icon {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  width: 65px;
+  height: 65px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  transition: transform 0.3s ease;
+  z-index: 900;
+}
+
+.chatbot-icon img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.chatbot-icon:hover { transform: scale(1.1); }
+
+.chatbot-container {
+  position: fixed;
+  bottom: 100px;
+  right: 25px;
+  width: 320px;
+  height: 420px;
+  display: none;
+  flex-direction: column;
+  background: rgba(255,255,255,0.1);
+  border-radius: 15px;
+  border: 1px solid rgba(255,255,255,0.3);
+  backdrop-filter: blur(15px);
+  overflow: hidden;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+  animation: fadeInUp 0.4s ease;
+}
+
+.chat-header {
+  background: rgba(0,0,0,0.7);
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+.close-chat {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.chat-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.chat-messages div {
+  padding: 8px 10px;
+  margin: 6px 0;
+  border-radius: 10px;
+  max-width: 85%;
+  word-wrap: break-word;
+}
+
+.user-message { background: rgba(0, 123, 255, 0.85); align-self: flex-end; color: #fff; }
+.bot-message { background: rgba(0, 0, 0, 0.7); align-self: flex-start; color: #fff; }
+
+.chat-input-area {
+  display: flex;
+  gap: 5px;
+}
+
+#chat-input {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.8);
+  outline: none;
+}
+
+button.send-btn {
+  background: #007bff;
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+button.send-btn:hover { background: #0056b3; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🌐 TAKAMURA API</h1>
+  <p class="subtitle">منصة واجهات برمجة تطبيقات ذكية ومتطورة</p>
+</header>
+
+<div class="container" id="type-container">
+  <p class="message" id="message">جارٍ تحميل البيانات...</p>
+</div>
+
+<!-- زر تبديل المظهر -->
+<div class="theme-toggle" onclick="toggleThemeMenu()">⚙️ تخصيص المظهر</div>
+
+<!-- قائمة الخلفيات -->
+<div class="theme-menu" id="theme-menu">
+  <button class="theme-option theme-dark" onclick="setTheme('dark')"></button>
+  <button class="theme-option theme-blue" onclick="setTheme('blue')"></button>
+  <button class="theme-option theme-purple" onclick="setTheme('purple')"></button>
+  <button class="theme-option theme-pink" onclick="setTheme('pink')"></button>
+  <button class="theme-option theme-green" onclick="setTheme('green')"></button>
+</div>
+
+<!-- الشات -->
+<div class="chatbot-icon" onclick="toggleChat()">
+  <img src="https://c.top4top.io/p_3352185ep0.jpg" alt="Bot">
+</div>
+
+<div class="chatbot-container" id="chat-container">
+  <div class="chat-header">
+    Takamura Bot
+    <button class="close-chat" onclick="toggleChat()">×</button>
+  </div>
+  <div class="chat-body">
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input-area">
+      <input type="text" id="chat-input" placeholder="اكتب رسالتك..." onkeypress="handleKeyPress(event)">
+      <button class="send-btn" onclick="sendMessage()">إرسال</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* تحميل الأنواع */
+async function loadTypes() {
+  try {
+    const res = await fetch('/api/list');
+    const data = await res.json();
+    const container = document.getElementById('type-container');
+    container.innerHTML = '';
+
+    const types = [...new Set(data.map(api => api.type || 'افتراضي'))];
+    if (!types.length) {
+      container.innerHTML = '<p class="message">❌ لا توجد بيانات.</p>';
+      return;
+    }
+    types.forEach(type => {
+      const el = document.createElement('a');
+      el.className = 'type-box';
+      el.href = `type.html?type=${type}`;
+      el.textContent = type.toUpperCase();
+      container.appendChild(el);
+    });
+  } catch {
+    document.getElementById('message').innerText = '⚠️ فشل تحميل البيانات.';
+  }
+}
+loadTypes();
+
+/* الشات */
+function toggleChat() {
+  const chat = document.getElementById('chat-container');
+  chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+}
+function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const msgBox = document.getElementById('chat-messages');
+  const text = input.value.trim();
+  if (!text) return;
+  const userDiv = document.createElement('div');
+  userDiv.className = 'user-message';
+  userDiv.innerText = text;
+  msgBox.appendChild(userDiv);
+  input.value = '';
+  try {
+    const res = await fetch(`/api/ai/cai?prompt=Takamura&text=${encodeURIComponent(text)}`);
+    const reply = await res.text();
+    const botDiv = document.createElement('div');
+    botDiv.className = 'bot-message';
+    botDiv.innerText = reply;
+    msgBox.appendChild(botDiv);
+  } catch {
+    const botDiv = document.createElement('div');
+    botDiv.className = 'bot-message';
+    botDiv.innerText = '⚠️ خطأ في الاتصال.';
+    msgBox.appendChild(botDiv);
+  }
+  msgBox.scrollTop = msgBox.scrollHeight;
+}
+
+/* تخصيص المظهر */
+function toggleThemeMenu() {
+  const menu = document.getElementById('theme-menu');
+  menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+}
+
+function setTheme(color) {
+  const root = document.documentElement;
+  const themes = {
+    dark: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+    blue: "linear-gradient(135deg, #1a2980, #26d0ce)",
+    purple: "linear-gradient(135deg, #654ea3, #eaafc8)",
+    pink: "linear-gradient(135deg, #ff758c, #ff7eb3)",
+    green: "linear-gradient(135deg, #11998e, #38ef7d)"
+  };
+  root.style.setProperty("--bg-gradient", themes[color]);
+  localStorage.setItem("theme", color);
+}
+
+/* تحميل المظهر المحفوظ */
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('theme');
+  if (saved) setTheme(saved);
+});
+</script>
+</body>
+</html>
