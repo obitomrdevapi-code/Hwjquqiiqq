@@ -1,379 +1,477 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TAKAMURA API</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBITO APIS - منصة واجهات برمجة التطبيقات المتطورة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #3b82f6;
+            --secondary: #7e22ce;
+            --secondary-dark: #6b21a8;
+            --dark: #0f172a;
+            --dark-light: #1e293b;
+            --text: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border-radius: 12px;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s ease;
+        }
 
-<style>
-:root {
-  --bg-gradient: linear-gradient(135deg, #1f1c2c, #928dab);
-  --accent: #00bfff;
-  --text: #fff;
-}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Cairo", sans-serif;
+        }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Cairo", sans-serif;
-}
+        body {
+            background: linear-gradient(135deg, var(--dark), var(--dark-light));
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
 
-body {
-  min-height: 100vh;
-  background: var(--bg-gradient);
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.8s ease;
-  overflow-x: hidden;
-}
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
 
-header {
-  text-align: center;
-  margin-bottom: 30px;
-}
+        /* Header Styles */
+        header {
+            padding: 2rem 0;
+            text-align: center;
+            position: relative;
+        }
 
-h1 {
-  font-size: 34px;
-  font-weight: bold;
-  margin-bottom: 10px;
-  text-shadow: 0 0 10px rgba(255,255,255,0.3);
-}
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
 
-.subtitle {
-  opacity: 0.8;
-  font-size: 18px;
-}
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: var(--shadow);
+        }
 
-/* بطاقات الأنواع */
-.container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 18px;
-  max-width: 700px;
-  padding: 10px;
-}
+        .logo-text {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
 
-.type-box {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255,255,255,0.3);
-  padding: 15px 25px;
-  border-radius: 14px;
-  color: #fff;
-  text-decoration: none;
-  font-weight: bold;
-  font-size: 18px;
-  backdrop-filter: blur(10px);
-  transition: transform 0.3s ease, background 0.4s;
-  min-width: 230px;
-  text-align: center;
-}
+        .tagline {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
 
-.type-box:hover {
-  transform: translateY(-5px);
-  background: rgba(255, 255, 255, 0.25);
-}
+        /* Main Content */
+        .main-content {
+            padding: 2rem 0 4rem;
+        }
 
-/* زر تخصيص الخلفية */
-.theme-toggle {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.3);
-  padding: 10px 15px;
-  border-radius: 10px;
-  cursor: pointer;
-  color: #fff;
-  backdrop-filter: blur(10px);
-  transition: background 0.3s;
-}
+        .section-title {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            position: relative;
+        }
 
-.theme-toggle:hover {
-  background: rgba(255,255,255,0.3);
-}
+        .section-title h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            display: inline-block;
+            padding-bottom: 10px;
+        }
 
-/* قائمة اختيار الخلفيات */
-.theme-menu {
-  position: fixed;
-  top: 70px;
-  left: 20px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 12px;
-  backdrop-filter: blur(15px);
-  display: none;
-  flex-direction: column;
-  padding: 10px;
-  z-index: 1000;
-}
+        .section-title h2:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 50%;
+            transform: translateX(50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            border-radius: 3px;
+        }
 
-.theme-option {
-  width: 180px;
-  height: 40px;
-  border-radius: 8px;
-  margin: 5px 0;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
+        /* API Categories Grid */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
 
-.theme-option:hover {
-  transform: scale(1.05);
-}
+        .category-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            padding: 1.8rem;
+            text-align: center;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
 
-/* ألوان الخلفيات */
-.theme-dark { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }
-.theme-blue { background: linear-gradient(135deg, #1a2980, #26d0ce); }
-.theme-purple { background: linear-gradient(135deg, #654ea3, #eaafc8); }
-.theme-pink { background: linear-gradient(135deg, #ff758c, #ff7eb3); }
-.theme-green { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .category-card:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+        }
 
-/* شات البوت */
-.chatbot-icon {
-  position: fixed;
-  bottom: 25px;
-  right: 25px;
-  width: 65px;
-  height: 65px;
-  background: rgba(255,255,255,0.9);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-  transition: transform 0.3s ease;
-  z-index: 900;
-}
+        .category-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+        }
 
-.chatbot-icon img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-}
+        .category-icon {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 1.2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: var(--primary-light);
+        }
 
-.chatbot-icon:hover { transform: scale(1.1); }
+        .category-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
 
-.chatbot-container {
-  position: fixed;
-  bottom: 100px;
-  right: 25px;
-  width: 320px;
-  height: 420px;
-  display: none;
-  flex-direction: column;
-  background: rgba(255,255,255,0.1);
-  border-radius: 15px;
-  border: 1px solid rgba(255,255,255,0.3);
-  backdrop-filter: blur(15px);
-  overflow: hidden;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.4);
-  animation: fadeInUp 0.4s ease;
-}
+        .category-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
 
-.chat-header {
-  background: rgba(0,0,0,0.7);
-  padding: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: white;
-}
+        .category-link {
+            display: inline-block;
+            padding: 0.7rem 1.5rem;
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 500;
+            transition: var(--transition);
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+        }
 
-.close-chat {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 22px;
-  cursor: pointer;
-}
+        .category-link:hover {
+            background: linear-gradient(to right, var(--primary-dark), var(--primary));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(37, 99, 235, 0.4);
+        }
 
-.chat-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 10px;
-}
+        /* Features Section */
+        .features {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: var(--border-radius);
+            padding: 2.5rem;
+            margin-top: 3rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-}
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
 
-.chat-messages div {
-  padding: 8px 10px;
-  margin: 6px 0;
-  border-radius: 10px;
-  max-width: 85%;
-  word-wrap: break-word;
-}
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
 
-.user-message { background: rgba(0, 123, 255, 0.85); align-self: flex-end; color: #fff; }
-.bot-message { background: rgba(0, 0, 0, 0.7); align-self: flex-start; color: #fff; }
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(37, 99, 235, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
 
-.chat-input-area {
-  display: flex;
-  gap: 5px;
-}
+        .feature-content h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
 
-#chat-input {
-  flex: 1;
-  padding: 8px;
-  border: none;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.8);
-  outline: none;
-}
+        .feature-content p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
 
-button.send-btn {
-  background: #007bff;
-  border: none;
-  color: #fff;
-  border-radius: 8px;
-  padding: 8px 10px;
-  cursor: pointer;
-}
+        /* Footer */
+        footer {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2rem 0;
+            margin-top: 3rem;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-button.send-btn:hover { background: #0056b3; }
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-link {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .social-link:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-3px);
+        }
+
+        .copyright {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .logo-text {
+                font-size: 1.8rem;
+            }
+            
+            .categories-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .features {
+                padding: 1.5rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
-
 <body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <h1 class="logo-text">OBITO APIS</h1>
+            </div>
+            <p class="tagline">منصة واجهات برمجة التطبيقات المتطورة والآمنة لتطوير تطبيقاتك بسهولة وكفاءة</p>
+        </header>
 
-<header>
-  <h1>🌐 TAKAMURA API</h1>
-  <p class="subtitle">منصة واجهات برمجة تطبيقات ذكية ومتطورة</p>
-</header>
+        <main class="main-content">
+            <section class="api-categories">
+                <div class="section-title">
+                    <h2>فئات واجهات البرمجة</h2>
+                </div>
+                
+                <div class="categories-grid" id="categories-container">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>جاري تحميل الفئات...</p>
+                    </div>
+                </div>
+            </section>
 
-<div class="container" id="type-container">
-  <p class="message" id="message">جارٍ تحميل البيانات...</p>
-</div>
+            <section class="features">
+                <div class="section-title">
+                    <h2>مميزات OBITO APIS</h2>
+                </div>
+                
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h3>أداء فائق السرعة</h3>
+                            <p>واجهات برمجة سريعة الاستجابة مع زمن وصول أقل من 100 مللي ثانية</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h3>حماية وأمان متقدم</h3>
+                            <p>نظام أمان متعدد الطبقات لحماية بياناتك وتطبيقاتك</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-sync-alt"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h3>تحديثات مستمرة</h3>
+                            <p>نقوم بتحديث وتحسين واجهات البرمجة باستمرار لتقديم أفضل تجربة</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-headset"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h3>دعم فني متكامل</h3>
+                            <p>فريق دعم فني متاح على مدار الساعة لمساعدتك في أي استفسار</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
 
-<!-- زر تبديل المظهر -->
-<div class="theme-toggle" onclick="toggleThemeMenu()">⚙️ تخصيص المظهر</div>
-
-<!-- قائمة الخلفيات -->
-<div class="theme-menu" id="theme-menu">
-  <button class="theme-option theme-dark" onclick="setTheme('dark')"></button>
-  <button class="theme-option theme-blue" onclick="setTheme('blue')"></button>
-  <button class="theme-option theme-purple" onclick="setTheme('purple')"></button>
-  <button class="theme-option theme-pink" onclick="setTheme('pink')"></button>
-  <button class="theme-option theme-green" onclick="setTheme('green')"></button>
-</div>
-
-<!-- الشات -->
-<div class="chatbot-icon" onclick="toggleChat()">
-  <img src="https://c.top4top.io/p_3352185ep0.jpg" alt="Bot">
-</div>
-
-<div class="chatbot-container" id="chat-container">
-  <div class="chat-header">
-    Takamura Bot
-    <button class="close-chat" onclick="toggleChat()">×</button>
-  </div>
-  <div class="chat-body">
-    <div class="chat-messages" id="chat-messages"></div>
-    <div class="chat-input-area">
-      <input type="text" id="chat-input" placeholder="اكتب رسالتك..." onkeypress="handleKeyPress(event)">
-      <button class="send-btn" onclick="sendMessage()">إرسال</button>
+        <footer>
+            <div class="footer-content">
+                <div class="social-links">
+                    <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-github"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-discord"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-telegram"></i></a>
+                </div>
+                <p class="copyright">© 2023 OBITO APIS. جميع الحقوق محفوظة.</p>
+            </div>
+        </footer>
     </div>
-  </div>
-</div>
 
-<script>
-/* تحميل الأنواع */
-async function loadTypes() {
-  try {
-    const res = await fetch('/api/list');
-    const data = await res.json();
-    const container = document.getElementById('type-container');
-    container.innerHTML = '';
+    <script>
+        // تحميل فئات واجهات البرمجة
+        async function loadCategories() {
+            try {
+                const res = await fetch('/api/list');
+                const data = await res.json();
+                const container = document.getElementById('categories-container');
+                
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<div class="loading"><p>❌ لا توجد فئات متاحة حالياً.</p></div>';
+                    return;
+                }
+                
+                // استخراج الفئات الفريدة
+                const categories = [...new Set(data.map(api => api.type || 'عام'))];
+                
+                // إنشاء بطاقات الفئات
+                container.innerHTML = '';
+                categories.forEach(category => {
+                    const categoryCard = document.createElement('div');
+                    categoryCard.className = 'category-card';
+                    
+                    // تحديد الأيقونة المناسبة بناءً على نوع الفئة
+                    let icon = 'fas fa-cube';
+                    let description = 'مجموعة من واجهات البرمجة المتخصصة';
+                    
+                    if (category.includes('ذكاء')) icon = 'fas fa-brain';
+                    else if (category.includes('وسائط')) icon = 'fas fa-photo-video';
+                    else if (category.includes('أدوات')) icon = 'fas fa-tools';
+                    else if (category.includes('بيانات')) icon = 'fas fa-database';
+                    else if (category.includes('أمن')) icon = 'fas fa-shield-alt';
+                    
+                    categoryCard.innerHTML = `
+                        <div class="category-icon">
+                            <i class="${icon}"></i>
+                        </div>
+                        <h3 class="category-name">${category}</h3>
+                        <p class="category-desc">${description}</p>
+                        <a href="type.html?type=${encodeURIComponent(category)}" class="category-link">استكشاف الواجهات</a>
+                    `;
+                    
+                    container.appendChild(categoryCard);
+                });
+            } catch (error) {
+                console.error('Error loading categories:', error);
+                document.getElementById('categories-container').innerHTML = 
+                    '<div class="loading"><p>⚠️ فشل في تحميل الفئات. يرجى المحاولة لاحقاً.</p></div>';
+            }
+        }
 
-    const types = [...new Set(data.map(api => api.type || 'افتراضي'))];
-    if (!types.length) {
-      container.innerHTML = '<p class="message">❌ لا توجد بيانات.</p>';
-      return;
-    }
-    types.forEach(type => {
-      const el = document.createElement('a');
-      el.className = 'type-box';
-      el.href = `type.html?type=${type}`;
-      el.textContent = type.toUpperCase();
-      container.appendChild(el);
-    });
-  } catch {
-    document.getElementById('message').innerText = '⚠️ فشل تحميل البيانات.';
-  }
-}
-loadTypes();
-
-/* الشات */
-function toggleChat() {
-  const chat = document.getElementById('chat-container');
-  chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
-}
-function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
-async function sendMessage() {
-  const input = document.getElementById('chat-input');
-  const msgBox = document.getElementById('chat-messages');
-  const text = input.value.trim();
-  if (!text) return;
-  const userDiv = document.createElement('div');
-  userDiv.className = 'user-message';
-  userDiv.innerText = text;
-  msgBox.appendChild(userDiv);
-  input.value = '';
-  try {
-    const res = await fetch(`/api/ai/cai?prompt=Takamura&text=${encodeURIComponent(text)}`);
-    const reply = await res.text();
-    const botDiv = document.createElement('div');
-    botDiv.className = 'bot-message';
-    botDiv.innerText = reply;
-    msgBox.appendChild(botDiv);
-  } catch {
-    const botDiv = document.createElement('div');
-    botDiv.className = 'bot-message';
-    botDiv.innerText = '⚠️ خطأ في الاتصال.';
-    msgBox.appendChild(botDiv);
-  }
-  msgBox.scrollTop = msgBox.scrollHeight;
-}
-
-/* تخصيص المظهر */
-function toggleThemeMenu() {
-  const menu = document.getElementById('theme-menu');
-  menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
-}
-
-function setTheme(color) {
-  const root = document.documentElement;
-  const themes = {
-    dark: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
-    blue: "linear-gradient(135deg, #1a2980, #26d0ce)",
-    purple: "linear-gradient(135deg, #654ea3, #eaafc8)",
-    pink: "linear-gradient(135deg, #ff758c, #ff7eb3)",
-    green: "linear-gradient(135deg, #11998e, #38ef7d)"
-  };
-  root.style.setProperty("--bg-gradient", themes[color]);
-  localStorage.setItem("theme", color);
-}
-
-/* تحميل المظهر المحفوظ */
-window.addEventListener('load', () => {
-  const saved = localStorage.getItem('theme');
-  if (saved) setTheme(saved);
-});
-</script>
+        // تحميل الفئات عند بدء التشغيل
+        document.addEventListener('DOMContentLoaded', loadCategories);
+    </script>
 </body>
 </html>
