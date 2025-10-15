@@ -1,69 +1,50 @@
-
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 
-// API الذكاء الاصطناعي
-router.get('/ai-gpt4', async (req, res) => {
+// API DeepSeek
+router.get('/deepseek-r1', async (req, res) => {
   const { txt} = req.query;
 
   // التحقق من إدخال السؤال
   if (!txt ||!txt.trim()) {
     return res.status(400).json({
       code: 1,
-      msg: 'Missing txt parameter (السؤال مطلوب)',
+      msg: 'يرجى إدخال السؤال عبر?txt=',
 });
 }
 
   try {
-    // استدعاء API الخارجي
-    const response = await axios.post('https://api.appzone.tech/v1/chat/completions', {
+    const { data} = await axios.post('https://ai.clauodflare.workers.dev/chat', {
+      model: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
       messages: [{
         role: 'user',
-        content: [{ type: 'text', text: txt}]
-}],
-      model: 'gpt-4.1',
-      isSubscribed: true
-}, {
-      headers: {
-        authorization: 'Bearer az-chatai-key',
-        'content-type': 'application/json',
-        'user-agent': 'okhttp/4.9.2',
-        'x-app-version': '3.0',
-        'x-requested-with': 'XMLHttpRequest',
-        'x-user-id': '$RCAnonymousID:84947a7a4141450385bfd07a66c3b5c4'
-}
+        content: txt
+}]
 });
 
-    // معالجة الرد
-    let fullText = '';
-    const lines = response.data.split('\n\n').map(line => line.substring(6));
-    for (const line of lines) {
-      if (line === '[DONE]') continue;
-      try {
-        const d = JSON.parse(line);
-        fullText += d.choices[0].delta.content;
-} catch {}
+    if (!data.success) {
+      return res.status(500).json({
+        code: 1,
+        msg: 'فشل في الحصول على الرد',
+        details: data
+});
 }
 
-    const thinkMatch = fullText.match(/<think>([\s\S]*?)<\/think>/);
-    const think = thinkMatch? thinkMatch[1].trim(): '';
-    const answer = fullText.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+    const response = data.data.response.split('</think>').pop().trim();
 
-    // إعادة النتائج إلى المستخدم
     res.status(200).json({
       code: 0,
       msg: 'success',
-      model: 'GPT-4.1',
+      model: 'DeepSeek R1 Distill Qwen-32B',
       question: txt,
-      think,
-      answer
+      answer: response
 });
 } catch (error) {
     res.status(500).json({
       code: 1,
-      msg: 'An error occurred',
-      error: error.message,
+      msg: 'حدث خطأ أثناء المعالجة',
+      error: error.message
 });
 }
 });
@@ -71,10 +52,10 @@ router.get('/ai-gpt4', async (req, res) => {
 // تصدير الـ router
 module.exports = {
   path: "/api/ai",
-  name: "GPT-4.1 AI",
+  name: "DeepSeek R1 Distill",
   type: "ai",
-  url: `${global.t}/api/ai/ai-gpt4?txt=ما هي عاصمة المغرب`,
-  logo: "https://files.catbox.moe/3gpt41.jpg",
-  description: "نموذج GPT-4.1 من OpenAI يتميز بالدقة العالية في فهم السياق وتوليد النصوص المعقدة.",
+  url: `${global.t}/api/ai/deepseek-r1?txt=ما هي عاصمة المغرب`,
+  logo: "https://files.catbox.moe/5deepseekr1.jpg",
+  description: "نموذج DeepSeek R1 Distill Qwen-32B يتميز بسرعة الاستجابة والتحليل الدقيق للنصوص.",
   router,
 };
