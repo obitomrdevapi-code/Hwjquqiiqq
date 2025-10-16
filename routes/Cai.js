@@ -1,6 +1,5 @@
-
-import express from "express";
-import axios from "axios";
+const express = require("express");
+const axios = require("axios");
 
 const router = express.Router();
 
@@ -34,16 +33,6 @@ router.get("/cai", async (req, res) => {
 }
 });
 
-export default {
-  path: "/api/ai",
-  name: "ai character",
-  type: "ai",
-  url: `${global.t}/api/ai/cai?prompt=your%20character%20prompt&text=مرحبا`,
-  logo: "https://i.ibb.co/bjSWtGGS/uploaded-image.jpg",
-  description: "إنشاء محادثة ذكية مع شخصية مخصصة باستخدام نموذج GPT-3.5",
-  router
-};
-
 async function chat(prompt, text) {
   const response = await axios({
     method: "POST",
@@ -75,3 +64,13 @@ async function chat(prompt, text) {
 
   return response.data;
 }
+
+module.exports = {
+  path: "/api/ai",
+  name: "ai character",
+  type: "ai",
+  url: `${global.t}/api/ai/cai?prompt=شخصية%20مرشدة&text=مرحبا`,
+  logo: "https://i.ibb.co/bjSWtGGS/uploaded-image.jpg",
+  description: "إنشاء محادثة ذكية مع شخصية مخصصة باستخدام نموذج GPT-3.5",
+  router
+};
