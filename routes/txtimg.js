@@ -55,7 +55,7 @@ module.exports = {
   name: "AI Image Generator",
   type: "ai",
   url: `${global.t}/api/ai/txt2img?txt=قصر في السماء`,
-  logo: "https://files.catbox.moe/aiimage.jpg",
+  logo: "https://h.uguu.se/RlyKrhlZ.jpg",
   description: "تحويل وصف نصي إلى صورة باستخدام نموذج text2img من aritek.",
   router
 };
