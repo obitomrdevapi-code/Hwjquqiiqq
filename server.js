@@ -11,7 +11,8 @@ app.listen(9012, () => {
 });
 const routesDir = path.join(__dirname, 'routes');
 const apiList = [];
-global.t = 'https://obito-mr-apis.vercel.app/';
+global.t = 'https://obito-mr-apis.vercel.app';
+
 // تحميل جميع الـ API ديناميكيًا
 fs.readdirSync(routesDir).forEach((file) => {
   const route = require(path.join(routesDir, file));
@@ -19,13 +20,15 @@ fs.readdirSync(routesDir).forEach((file) => {
   if (route.path && route.router) {
     app.use(route.path, route.router);
 
-    // إضافة تفاصيل الـ API إلى القائمة
+    // إضافة تفاصيل الـ API إلى القائمة مع الوصف
     apiList.push({
       name: route.name || file.replace('.js', '').toUpperCase(),
       type: route.type || 'default',
+      path: route.path, // أضف هذا الحقل
       endpoint: route.path,
       url: route.url || null,
       logo: route.logo || null,
+      description: route.description || 'لا يوجد وصف متوفر', // أضف هذا الحضر
       status: 'Active',
     });
   }
