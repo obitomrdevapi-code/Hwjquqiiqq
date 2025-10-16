@@ -32,29 +32,29 @@ async function writecream(prompt, txt) {
 }
 
 router.get('/writecream', async (req, res) => {
-  const { logic, question} = req.query;
+  const { prompt, txt} = req.query;
 
-  if (!logic ||!question) {
+  if (!prompt ||!txt) {
     return res.status(400).json({
       code: 1,
       msg: 'يرجى تقديم وصف الشخصيه بعد ?prompt= وسؤال بعد ?txt='
 });
 }
 
-  const reply = await writecream(logic, question);
+  const reply = await writecream(prompt, txt);
 
   res.status(200).json({
     code: 0,
     msg: 'success',
-    logic,
-    question,
+    prompt,
+    txt,
     reply
 });
 });
 
 module.exports = {
   path: "/api/ai",
-  name: "Writecream AI Logic",
+  name: "Writecream AI prompt",
   type: "ai",
   url: `${global.t}/api/ai/writecream?prompt=أنت مساعد ذكي اسمك اوبيتو&txt=كيفك؟`,
   logo: "https://files.catbox.moe/writecream.jpg",
