@@ -175,7 +175,6 @@
         .api-info p {
             color: var(--text-secondary);
             font-size: 0.9rem;
-            line-height: 1.5;
         }
 
         .api-body {
@@ -543,7 +542,7 @@
                         <i class="fas fa-info-circle"></i>
                         الوصف
                     </h3>
-                    <p id="dialog-description">وصف API سيظهر هنا...</p>
+                    <p id="dialog-api.type">وصف API سيظهر هنا...</p>
                 </div>
 
                 <div class="dialog-section">
@@ -628,7 +627,7 @@
             
             // تعبئة البيانات في الديلوغ
             document.getElementById('dialog-title').textContent = `توثيق ${apiData.name}`;
-            document.getElementById('dialog-description').textContent = apiData.description || 'لا يوجد وصف متوفر';
+            document.getElementById('dialog-api.type').textContent = apiData.api.type || 'لا يوجد وصف متوفر';
             document.getElementById('dialog-example').textContent = exampleCode;
             document.getElementById('dialog-type').textContent = apiData.type || 'عام';
             document.getElementById('dialog-path').textContent = apiData.path || '/api/unknown';
@@ -686,8 +685,6 @@
                 const container = document.getElementById('apis-container');
                 const countElement = document.getElementById('apis-count');
                 
-                console.log('البيانات المستلمة:', data); // للتdebug
-                
                 if (!data || data.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
@@ -704,8 +701,6 @@
                 
                 // تصفية الواجهات حسب النوع
                 const filteredAPIs = data.filter(api => api.type === apiType);
-                
-                console.log('الواجهات المصفاة:', filteredAPIs); // للتdebug
                 
                 // تحديث عدد الواجهات
                 countElement.innerHTML = `عرض <span class="highlight">${filteredAPIs.length}</span> واجهة برمجة`;
@@ -729,11 +724,8 @@
                     const apiCard = document.createElement('div');
                     apiCard.className = 'api-card';
                     
-                    // استخدام الوصف من api.description مباشرة
-                    const description = api.description || 'وصف غير متوفر';
-                    const exampleUrl = api.url || `${window.location.origin}${api.path}`;
-                    
-                    console.log('إنشاء بطاقة لـ:', api.name, 'الوصف:', description); // للتdebug
+                    // استخدام الوصف من api.api.type مباشرة
+                    const api.type = api.api.type || 'وصف غير متوفر';
                     
                     apiCard.innerHTML = `
                         <div class="api-header">
@@ -742,7 +734,7 @@
                             </div>
                             <div class="api-info">
                                 <h3>${api.name || 'واجهة غير معروفة'}</h3>
-                                <p>${description}</p>
+                                <p>${api.type}</p>
                             </div>
                         </div>
                         <div class="api-body">
@@ -762,7 +754,7 @@
                                         <i class="fas fa-external-link-alt"></i> زيارة API
                                     </a>
                                 ` : ''}
-                                <button class="btn btn-secondary docs-btn" data-api='${JSON.stringify(api).replace(/'/g, "&quot;")}'>
+                                <button class="btn btn-secondary docs-btn" data-api='${JSON.stringify(api).replace(/'/g, "&#39;")}'>
                                     <i class="fas fa-code"></i> استعراض التوثيق
                                 </button>
                             </div>
@@ -775,13 +767,8 @@
                 // إضافة مستمعي الأحداث لأزرار التوثيق
                 document.querySelectorAll('.docs-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
-                        try {
-                            const apiData = JSON.parse(this.getAttribute('data-api').replace(/&quot;/g, '"'));
-                            openDocsDialog(apiData);
-                        } catch (error) {
-                            console.error('خطأ في تحليل بيانات API:', error);
-                            showToast('خطأ في تحميل التوثيق', true);
-                        }
+                        const apiData = JSON.parse(this.getAttribute('data-api').replace(/&#39;/g, "'"));
+                        openDocsDialog(apiData);
                     });
                 });
 
