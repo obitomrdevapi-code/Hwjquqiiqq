@@ -86,7 +86,7 @@ router.get('/twitter', async (req, res) => {
 module.exports = {
   path: "/api/download",
   name: "Twitter/X Media Downloader",
-  type: "scraper",
+  type: "download",
   url: `${global.t}/api/download/twitter?url=https://twitter.com/example/status/123456789`,
   logo: "https://files.catbox.moe/twitterdl.jpg",
   description: "استخراج روابط الصور والفيديوهات من تغريدات تويتر/X.",
