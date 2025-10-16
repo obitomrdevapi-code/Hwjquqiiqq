@@ -220,6 +220,9 @@
             transition: var(--transition);
             flex: 1;
             justify-content: center;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
         }
 
         .btn-primary {
@@ -242,6 +245,18 @@
 
         .btn-secondary:hover {
             background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-success {
+            background: linear-gradient(to right, var(--success), #059669);
+            color: white;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(to right, #059669, var(--success));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(16, 185, 129, 0.4);
         }
 
         /* Loading State */
@@ -280,6 +295,166 @@
             opacity: 0.5;
         }
 
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--success);
+            color: white;
+            padding: 12px 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.error {
+            background: var(--danger);
+        }
+
+        /* Documentation Dialog */
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .dialog-overlay.show {
+            display: flex;
+        }
+
+        .dialog {
+            background: linear-gradient(135deg, var(--dark), var(--dark-light));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+            animation: dialogSlideIn 0.3s ease;
+        }
+
+        @keyframes dialogSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .dialog-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dialog-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .close-dialog {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 5px;
+            transition: var(--transition);
+        }
+
+        .close-dialog:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .dialog-body {
+            padding: 1.5rem;
+        }
+
+        .dialog-section {
+            margin-bottom: 2rem;
+        }
+
+        .dialog-section h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--primary-light);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dialog-section h3 i {
+            width: 20px;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .copy-code {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--text);
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: var(--transition);
+        }
+
+        .copy-code:hover {
+            background: var(--primary);
+        }
+
+        .dialog-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             header {
@@ -298,6 +473,20 @@
             }
             
             .api-actions {
+                flex-direction: column;
+            }
+
+            .toast {
+                right: 10px;
+                left: 10px;
+                bottom: 10px;
+            }
+
+            .dialog {
+                margin: 10px;
+            }
+
+            .dialog-actions {
                 flex-direction: column;
             }
         }
@@ -332,7 +521,144 @@
         </main>
     </div>
 
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toast-message">تم النسخ بنجاح!</span>
+    </div>
+
+    <!-- Documentation Dialog -->
+    <div class="dialog-overlay" id="docs-dialog">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h2 id="dialog-title">توثيق API</h2>
+                <button class="close-dialog" id="close-dialog">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <div class="dialog-section">
+                    <h3>
+                        <i class="fas fa-info-circle"></i>
+                        الوصف
+                    </h3>
+                    <p id="dialog-description">وصف API سيظهر هنا...</p>
+                </div>
+
+                <div class="dialog-section">
+                    <h3>
+                        <i class="fas fa-code"></i>
+                        مثال الاستخدام
+                    </h3>
+                    <div class="code-block">
+                        <button class="copy-code" id="copy-example">
+                            <i class="fas fa-copy"></i> نسخ
+                        </button>
+                        <code id="dialog-example">مثال API سيظهر هنا...</code>
+                    </div>
+                </div>
+
+                <div class="dialog-section">
+                    <h3>
+                        <i class="fas fa-link"></i>
+                        معلومات API
+                    </h3>
+                    <div class="api-detail">
+                        <i class="fas fa-cube"></i>
+                        <span>النوع:</span>
+                        <span class="value" id="dialog-type">-</span>
+                    </div>
+                    <div class="api-detail">
+                        <i class="fas fa-route"></i>
+                        <span>المسار:</span>
+                        <span class="value" id="dialog-path">-</span>
+                    </div>
+                </div>
+
+                <div class="dialog-actions">
+                    <button class="btn btn-success" id="test-api-btn">
+                        <i class="fas fa-rocket"></i> تجربة API
+                    </button>
+                    <button class="btn btn-primary" id="visit-api-btn">
+                        <i class="fas fa-external-link-alt"></i> زيارة API
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // دالة لعرض الإشعارات
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            
+            toastMessage.textContent = message;
+            toast.classList.remove('error');
+            
+            if (isError) {
+                toast.classList.add('error');
+                toast.querySelector('i').className = 'fas fa-exclamation-circle';
+            } else {
+                toast.querySelector('i').className = 'fas fa-check-circle';
+            }
+            
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // دالة نسخ النص إلى الحافظة
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('تم النسخ بنجاح!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                showToast('فشل في نسخ النص', true);
+            });
+        }
+
+        // دالة فتح ديلوغ التوثيق
+        function openDocsDialog(apiData) {
+            const dialog = document.getElementById('docs-dialog');
+            const exampleCode = apiData.url || `${window.location.origin}${apiData.path}`;
+            
+            // تعبئة البيانات في الديلوغ
+            document.getElementById('dialog-title').textContent = `توثيق ${apiData.name}`;
+            document.getElementById('dialog-description').textContent = apiData.description || 'لا يوجد وصف متوفر';
+            document.getElementById('dialog-example').textContent = exampleCode;
+            document.getElementById('dialog-type').textContent = apiData.type || 'عام';
+            document.getElementById('dialog-path').textContent = apiData.path || '/api/unknown';
+            
+            // إعداد الأزرار
+            document.getElementById('test-api-btn').onclick = () => {
+                window.open(exampleCode, '_blank');
+            };
+            
+            document.getElementById('visit-api-btn').onclick = () => {
+                if (apiData.url) {
+                    window.open(apiData.url, '_blank');
+                } else {
+                    copyToClipboard(exampleCode);
+                }
+            };
+            
+            // إعداد زر نسخ المثال
+            document.getElementById('copy-example').onclick = () => {
+                copyToClipboard(exampleCode);
+            };
+            
+            // إظهار الديلوغ
+            dialog.classList.add('show');
+        }
+
+        // إغلاق ديلوغ التوثيق
+        function closeDocsDialog() {
+            document.getElementById('docs-dialog').classList.remove('show');
+        }
+
         // تحميل واجهات البرمجة بناءً على النوع
         async function loadAPIs() {
             const params = new URLSearchParams(window.location.search);
@@ -398,21 +724,24 @@
                     const apiCard = document.createElement('div');
                     apiCard.className = 'api-card';
                     
+                    // استخدام الوصف من api.description مباشرة
+                    const description = api.description || 'وصف غير متوفر';
+                    
                     apiCard.innerHTML = `
                         <div class="api-header">
                             <div class="api-logo">
-                                ${api.logo ? `<img src="${api.logo}" alt="${api.name}">` : `<i class="fas fa-code"></i>`}
+                                ${api.logo ? `<img src="${api.logo}" alt="${api.name}" onerror="this.style.display='none'; this.parentNode.innerHTML='<i class=\\'fas fa-code\\'></i>'">` : `<i class="fas fa-code"></i>`}
                             </div>
                             <div class="api-info">
                                 <h3>${api.name || 'واجهة غير معروفة'}</h3>
-                                <p>${api.description || 'وصف غير متوفر'}</p>
+                                <p>${description}</p>
                             </div>
                         </div>
                         <div class="api-body">
                             <div class="api-detail">
                                 <i class="fas fa-link"></i>
                                 <span>المسار:</span>
-                                <span class="value">${api.endpoint || '/api/unknown'}</span>
+                                <span class="value">${api.path || '/api/unknown'}</span>
                             </div>
                             <div class="api-detail">
                                 <i class="fas fa-cube"></i>
@@ -420,14 +749,29 @@
                                 <span class="value">${api.type || 'عام'}</span>
                             </div>
                             <div class="api-actions">
-                                ${api.url ? `<a href="${api.url}" target="_blank" class="btn btn-primary"><i class="fas fa-external-link-alt"></i> زيارة API</a>` : ''}
-                                <a href="#" class="btn btn-secondary"><i class="fas fa-code"></i> استعراض التوثيق</a>
+                                ${api.url ? `
+                                    <a href="${api.url}" target="_blank" class="btn btn-primary">
+                                        <i class="fas fa-external-link-alt"></i> زيارة API
+                                    </a>
+                                ` : ''}
+                                <button class="btn btn-secondary docs-btn" data-api='${JSON.stringify(api).replace(/'/g, "&#39;")}'>
+                                    <i class="fas fa-code"></i> استعراض التوثيق
+                                </button>
                             </div>
                         </div>
                     `;
                     
                     container.appendChild(apiCard);
                 });
+
+                // إضافة مستمعي الأحداث لأزرار التوثيق
+                document.querySelectorAll('.docs-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const apiData = JSON.parse(this.getAttribute('data-api').replace(/&#39;/g, "'"));
+                        openDocsDialog(apiData);
+                    });
+                });
+
             } catch (error) {
                 console.error('Error loading APIs:', error);
                 document.getElementById('apis-container').innerHTML = `
@@ -442,6 +786,21 @@
                 document.getElementById('apis-count').innerHTML = `خطأ في تحميل البيانات`;
             }
         }
+
+        // إعداد مستمعي الأحداث للديلوغ
+        document.getElementById('close-dialog').addEventListener('click', closeDocsDialog);
+        document.getElementById('docs-dialog').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDocsDialog();
+            }
+        });
+
+        // إغلاق الديلوغ بالزر Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeDocsDialog();
+            }
+        });
 
         // تحميل الواجهات عند بدء التشغيل
         document.addEventListener('DOMContentLoaded', loadAPIs);
