@@ -1,98 +1,104 @@
-
 const express = require("express");
 const axios = require("axios");
-const FormData = require("form-data");
 
 const router = express.Router();
+const validModels = ["openai", "llama", "mistral", "mistral-large"];
 
-// ✅ Gemini API
-router.get("/gemini", async (req, res) => {
-  const { prompt} = req.query;
-
-  if (!prompt) {
-    return res.status(400).json({
-      success: false,
-      message: "يرجى إدخال prompt!"
-});
-}
+router.get("/sandboximg", async (req, res) => {
+  const { action = "chatbot", model, prompt} = req.query;
+  const selectedModel = model || "openai";
 
   try {
-    const response = await requestAuth(prompt);
-
-    // 🧹 استبدال جميع \n بـ مسافات لتنسيق أفضل
-    const formattedResponse = response.replace(/\n/g, " ");
-
-    return res.status(200).json({
-      success: true,
-      message: "تمت معالجة الطلب بنجاح",
-      data: {
-        response: formattedResponse
-}
-});
-} catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: "حدث خطأ أثناء الاتصال بالـ Gemini",
-      error: {
-        code: 500,
-        details: error.message
-}
+    if (action === "chatbot") {
+      if (!validModels.includes(selectedModel)) {
+        return res.status(400).json({
+          success: false,
+          status: 400,
+          message: `النموذج غير صالح. يرجى اختيار أحد النماذج التالية: ${validModels.join(", ")}`
 });
 }
-});
 
-// 🛠️ دالة طلب Gemini
-async function requestAuth(prompt) {
-  const url = "https://ai.jaze.top/api/auth/gemini";
-  const headers = {
-    accept: "*/*",
-    "accept-language": "id-ID,id;q=0.9",
-    "content-type": "multipart/form-data",
-    cookie: "i18n_redirected=zh",
-    origin: "https://ai.jaze.top",
-    priority: "u=1, i",
-    referer: "https://ai.jaze.top/?session=1",
-    "sec-ch-ua": `"Chromium";v="131", "Not_A Brand";v="24", "Microsoft Edge Simulate";v="131", "Lemur";v="131"`,
-    "sec-ch-ua-mobile": "?1",
-    "sec-ch-ua-platform": `"Android"`,
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-origin",
-    "user-agent":
-      "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
+      const data = {
+        messages: [prompt || "Hello!"],
+        character: selectedModel
 };
 
-  try {
-    const form = new FormData();
-    form.append("model", "gemini-1.5-flash");
-    form.append(
-      "messages",
-      JSON.stringify([
-        {
-          role: "system",
-          content:
-            "You are ChatGPT, a large language model trained by OpenAI. Follow the user's instructions carefully. Respond using markdown.",
-},
-        { role: "user", content: prompt},
-      ])
-);
+      const response = await axios.post("https://chatsandbox.com/api/chat", data, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Android 10; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0",
+          "Content-Type": "application/json",
+          "accept-language": "id-ID",
+          referer: `https://chatsandbox.com/chat/${selectedModel}`,
+          origin: "https://chatsandbox.com",
+          "alt-used": "chatsandbox.com"
+}
+});
 
-    const { data} = await axios.post(url, form, { headers});
-    return data;
+      return res.status(200).json({
+        success: true,
+        status: 200,
+        data: response.data
+});
+}
+
+    if (action === "text2img") {
+      const data = {
+        messages: [prompt || "A default image prompt"],
+        character: "ai-image-generator"
+};
+
+      const response = await axios.post("https://chatsandbox.com/api/chat", data, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Android 10; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0",
+          "Content-Type": "application/json",
+          "accept-language": "id-ID",
+          referer: "https://chatsandbox.com/ai-image-generator",
+          origin: "https://chatsandbox.com",
+          "alt-used": "chatsandbox.com"
+}
+});
+
+      const htmlString = response.data;
+      const urlMatch = htmlString.match(/src="([^"]+)"/);
+
+      if (!urlMatch) {
+        return res.status(500).json({
+          success: false,
+          status: 500,
+          message: "تعذر استخراج رابط الصورة من الاستجابة."
+});
+}
+
+      return res.status(200).json({
+        success: true,
+        status: 200,
+        data: {
+          imageUrl: urlMatch[1]
+}
+});
+}
+
+    return res.status(400).json({
+      success: false,
+      status: 400,
+      message: "قيمة action غير صالحة. استخدم 'chatbot' أو 'text2img'."
+});
 } catch (error) {
-    console.error("Error:", error.message);
-    throw error;
+    return res.status(500).json({
+      success: false,
+      status: 500,
+      message: "فشل في تنفيذ الطلب",
+      details: error.message
+});
 }
-}
+});
 
-// ✅ تصدير البيانات بشكل منظم مع وصف عربي
 module.exports = {
   path: "/api/ai",
-  name: "Gemini-Ai",
+  name: "sandbox",
   type: "ai",
-  url: `${global.t}/api/ai/gemini?prompt=كيف%20حالك؟`,
-  logo: "https://i.ibb.co/TqcWGvh3/uploaded-image.jpg",
-  description: "واجهة ذكاء اصطناعي تعتمد على نموذج Gemini 1.5 Flash لمعالجة النصوص والإجابة على الأسئلة",
+  url: `${global.t}/api/ai/sandboximg?prompt=cat`,
+  logo: "https://files.catbox.moe/z3igt5.jpg",
+  description: "واجهة متعددة الوظائف من موقع ChatSandbox، تتيح لك إنشاء محادثات ذكية باستخدام نماذج مثل OpenAI وLLaMA، أو توليد صور من وصف نصي باستخدام الذكاء الاصطناعي",
   router
 };
