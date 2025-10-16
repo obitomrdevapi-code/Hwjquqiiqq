@@ -88,11 +88,14 @@ router.get('/faceswap', async (req, res) => {
 }
 });
 
+// بديل: استخدام متغير بيئة أو قيمة ثابتة
+const BASE_URL = process.env.BASE_URL || 'https://your-domain.com';
+
 module.exports = {
   path: "/api/ai",
-  name: "Face Swap Generator",
+  name: "Face Swap Generator", 
   type: "ai",
-  url: `${global.t}/api/ai/faceswap?img1=https://h.uguu.se/djKYnPLK.jpg&img2=https://d.uguu.se/yWAhYEGe.jpg`,
+  url: `${BASE_URL}/api/ai/faceswap?img1=https://h.uguu.se/djKYnPLK.jpg&img2=https://d.uguu.se/yWAhYEGe.jpg`,
   logo: "https://files.catbox.moe/obitoface.jpg",
   description: "تبديل الوجه بين صورتين باستخدام Supawork Face Swap API.",
   router
