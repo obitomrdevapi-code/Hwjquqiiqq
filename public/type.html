@@ -175,6 +175,7 @@
         .api-info p {
             color: var(--text-secondary);
             font-size: 0.9rem;
+            line-height: 1.5;
         }
 
         .api-body {
@@ -685,6 +686,8 @@
                 const container = document.getElementById('apis-container');
                 const countElement = document.getElementById('apis-count');
                 
+                console.log('البيانات المستلمة:', data); // للتdebug
+                
                 if (!data || data.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
@@ -701,6 +704,8 @@
                 
                 // تصفية الواجهات حسب النوع
                 const filteredAPIs = data.filter(api => api.type === apiType);
+                
+                console.log('الواجهات المصفاة:', filteredAPIs); // للتdebug
                 
                 // تحديث عدد الواجهات
                 countElement.innerHTML = `عرض <span class="highlight">${filteredAPIs.length}</span> واجهة برمجة`;
@@ -726,6 +731,9 @@
                     
                     // استخدام الوصف من api.description مباشرة
                     const description = api.description || 'وصف غير متوفر';
+                    const exampleUrl = api.url || `${window.location.origin}${api.path}`;
+                    
+                    console.log('إنشاء بطاقة لـ:', api.name, 'الوصف:', description); // للتdebug
                     
                     apiCard.innerHTML = `
                         <div class="api-header">
@@ -754,7 +762,7 @@
                                         <i class="fas fa-external-link-alt"></i> زيارة API
                                     </a>
                                 ` : ''}
-                                <button class="btn btn-secondary docs-btn" data-api='${JSON.stringify(api).replace(/'/g, "&#39;")}'>
+                                <button class="btn btn-secondary docs-btn" data-api='${JSON.stringify(api).replace(/'/g, "&quot;")}'>
                                     <i class="fas fa-code"></i> استعراض التوثيق
                                 </button>
                             </div>
@@ -767,8 +775,13 @@
                 // إضافة مستمعي الأحداث لأزرار التوثيق
                 document.querySelectorAll('.docs-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
-                        const apiData = JSON.parse(this.getAttribute('data-api').replace(/&#39;/g, "'"));
-                        openDocsDialog(apiData);
+                        try {
+                            const apiData = JSON.parse(this.getAttribute('data-api').replace(/&quot;/g, '"'));
+                            openDocsDialog(apiData);
+                        } catch (error) {
+                            console.error('خطأ في تحليل بيانات API:', error);
+                            showToast('خطأ في تحميل التوثيق', true);
+                        }
                     });
                 });
 
