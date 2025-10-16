@@ -89,7 +89,7 @@ router.get('/faceswap', async (req, res) => {
 });
 
 // بديل: استخدام متغير بيئة أو قيمة ثابتة
-const BASE_URL = process.env.BASE_URL || 'https://your-domain.com';
+const BASE_URL = process.env.BASE_URL || 'https://obito-mr-apis.vercel.app';
 
 module.exports = {
   path: "/api/ai",
