@@ -1,94 +1,138 @@
 // بسم الله الرحمن الرحيم ✨
-// API لاستخراج جميع روابط M3U8 من موقع streamtest.in/logs
+// Interactive IPTV Log Scraper API
+// تحويل من Python إلى Node.js (Express API)
 
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
+const fs = require("fs");
+const path = require("path");
 
 const router = express.Router();
 
 /**
- * دالة لاستخراج روابط M3U8 من موقع streamtest.in/logs
- * @param {number} maxPages - عدد الصفحات التي سيتم استخراجها (افتراضي 3)
- * @returns {Promise<string[]>} - مصفوفة روابط M3U8
+ * جلب روابط M3U8 من موقع streamtest.in/logs
+ * @param {number} pages - عدد الصفحات المطلوب استخراجها
+ * @param {string} name - اسم القناة أو كلمة البحث
+ * @returns {Promise<string[]>}
  */
-async function scrapeStreamtestGeneric(maxPages = 3) {
-  const baseUrl = "https://streamtest.in/logs";
-  let allM3u8Links = [];
-  const visitedUrls = new Set();
+async function fetchLinks(pages = 1, name = "") {
+  const scrapedLinks = [];
+  const headers = { "User-Agent": "Mozilla/5.0" };
 
-  console.log(`[STREAMTEST SCRAPE DEBUG] بدء استخراج حتى ${maxPages} صفحات من ${baseUrl}`);
-
-  for (let page = 1; page <= maxPages; page++) {
-    const url = `${baseUrl}?page=${page}`;
-    if (visitedUrls.has(url)) continue;
-    visitedUrls.add(url);
+  for (let page = 1; page <= pages; page++) {
+    const url = `https://streamtest.in/logs/page/${page}?filter=${encodeURIComponent(name)}&is_public=true`;
+    console.log(`[INFO] Scraping: ${url}`);
 
     try {
-      const response = await axios.get(url, {
-        timeout: 20000,
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        },
-      });
-
-      if (response.status !== 200) continue;
-
+      const response = await axios.get(url, { headers, timeout: 10000 });
       const $ = cheerio.load(response.data);
-      $("table tbody tr").each((i, el) => {
-        const linkElement = $(el).find("td:first-child div div p:nth-child(2)");
-        let link = linkElement.text().trim();
 
-        if (!link) {
-          const cellText = $(el).find("td:first-child").text();
-          const urlMatch = cellText.match(/https?:\/\/[^\s\\'"<>]+/);
-          if (urlMatch) link = urlMatch[0];
-        }
-
-        if (link && link.includes(".m3u8") && !allM3u8Links.includes(link)) {
-          allM3u8Links.push(link);
+      $("p.line-clamp-3.hover\\:line-clamp-10").each((_, el) => {
+        const link = $(el).text().trim();
+        if (link && (link.startsWith("http://") || link.startsWith("https://"))) {
+          scrapedLinks.push(link);
         }
       });
     } catch (err) {
-      console.error(`[STREAMTEST ERROR] الصفحة ${page}:`, err.message);
+      console.error(`[ERROR] فشل استخراج الصفحة ${page}:`, err.message);
     }
   }
 
-  console.log(`[STREAMTEST SCRAPE DEBUG] تم العثور على ${allM3u8Links.length} روابط`);
-  return allM3u8Links;
+  console.log(`[INFO] تم العثور على ${scrapedLinks.length} روابط`);
+  return scrapedLinks;
+}
+
+/**
+ * إنشاء ملف M3U من الروابط
+ * @param {string[]} links - قائمة الروابط
+ * @param {string} name - اسم الملف
+ * @returns {string} - المسار النسبي للملف
+ */
+function createM3U(links, name = "logs") {
+  const timestamp = new Date().toISOString().replace(/[:T]/g, "-").split(".")[0];
+  const fileName = `${timestamp}_${name.toUpperCase()}.m3u`;
+  const filePath = path.join(__dirname, fileName);
+
+  fs.writeFileSync(filePath, links.join("\n"), "utf-8");
+  console.log(`[INFO] تم إنشاء ملف M3U: ${filePath}`);
+  return filePath;
 }
 
 /**
  * نقطة النهاية الرئيسية
  * مثال:
- *   /api/stream/streamtest?pages=5
+ *   /api/stream/iptv?pages=3&name=bein
+ *   /api/stream/iptv?pages=5
+ *   /api/stream/iptv/save?pages=2&name=disney
  */
-router.get("/streamtest", async (req, res) => {
-  const { pages } = req.query;
-  const maxPages = Number(pages) || 3;
+router.get("/iptv", async (req, res) => {
+  const { pages, name } = req.query;
+  const maxPages = Number(pages) || 1;
+  const searchName = name || "";
 
   try {
-    const links = await scrapeStreamtestGeneric(maxPages);
+    const links = await fetchLinks(maxPages, searchName);
+
     if (!links.length) {
       return res.status(404).json({
         status: 404,
         success: false,
-        message: "لم يتم العثور على أي روابط M3U8 😢",
+        message: "لم يتم العثور على روابط IPTV 😢",
       });
     }
 
-    return res.json({
+    res.json({
       status: 200,
       success: true,
       total: links.length,
+      filter: searchName || "all",
       links,
     });
   } catch (err) {
-    return res.status(500).json({
+    res.status(500).json({
       status: 500,
       success: false,
-      message: "حدث خطأ أثناء الاستخراج 🚫",
+      message: "حدث خطأ أثناء الجلب 🚫",
+      error: err.message,
+    });
+  }
+});
+
+/**
+ * نقطة لإنشاء ملف m3u تلقائيًا
+ * مثال:
+ *   /api/stream/iptv/save?pages=3&name=sport
+ */
+router.get("/iptv/save", async (req, res) => {
+  const { pages, name } = req.query;
+  const maxPages = Number(pages) || 1;
+  const searchName = name || "iptv";
+
+  try {
+    const links = await fetchLinks(maxPages, searchName);
+    if (!links.length) {
+      return res.status(404).json({
+        status: 404,
+        success: false,
+        message: "لم يتم العثور على روابط لإنشاء ملف M3U.",
+      });
+    }
+
+    const filePath = createM3U(links, searchName);
+    res.json({
+      status: 200,
+      success: true,
+      message: "✅ تم إنشاء ملف M3U بنجاح!",
+      file: path.basename(filePath),
+      total: links.length,
+      preview: links.slice(0, 5),
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: "حدث خطأ أثناء إنشاء الملف.",
       error: err.message,
     });
   }
@@ -96,11 +140,11 @@ router.get("/streamtest", async (req, res) => {
 
 module.exports = {
   path: "/api/stream",
-  name: "StreamTest M3U8 Scraper",
+  name: "Interactive IPTV Log Scraper",
   type: "scraper",
-  url: `${global.t}/api/stream/streamtest?pages=3`,
-  logo: "https://i.ibb.co/SXxT4hK/streamtest-logo.png",
+  url: `${global.t}/api/stream/iptv?pages=3&name=bein`,
+  logo: "https://i.ibb.co/bHdC2J7/iptv-logo.png",
   description:
-    "استخراج روابط M3U8 من موقع streamtest.in/logs بشكل مباشر مع تحديد عدد الصفحات.",
+    "استخراج روابط IPTV من streamtest.in مع إمكانية الحفظ كملف M3U، ودعم البحث عن قنوات محددة.",
   router,
 };
