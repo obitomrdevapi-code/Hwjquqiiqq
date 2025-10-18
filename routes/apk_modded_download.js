@@ -32,7 +32,7 @@ async function fetchAppById(id = "") {
  * مثال:
  *   /api/search/apk/info?id=be-live-tv-plus
  */
-router.get("/apk_download", async (req, res) => {
+router.get("/apk_modded_download", async (req, res) => {
   const { id} = req.query;
   const appId = id || "";
 
@@ -63,9 +63,9 @@ router.get("/apk_download", async (req, res) => {
 
 module.exports = {
   path: "/api/download",
-  name: "apk download",
+  name: "apk modded download",
   type: "download",
-  url: `${global.t}/api/download/apk_download?id=be-live-tv-plus`,
+  url: `${global.t}/api/download/apk_modded_download?id=be-live-tv-plus`,
   logo: "https://qu.ax/obitoajajq.png",
   description: "تحميل تطبيقات المهكره عبر الايدي",
   router,
