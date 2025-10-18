@@ -44,7 +44,7 @@ async function fetchApps(query = "") {
  * مثال:
  *   /api/search/apk?q=whatsapp
  */
-router.get("/apk", async (req, res) => {
+router.get("/apk_modded", async (req, res) => {
   const { q} = req.query;
   const searchQuery = q || "";
 
@@ -75,9 +75,9 @@ router.get("/apk", async (req, res) => {
 
 module.exports = {
   path: "/api/search",
-  name: "apk search",
+  name: "apk modded search",
   type: "search",
-  url: `${global.t}/api/search/apk?q=whatsapp`,
+  url: `${global.t}/api/search/apk_modded?q=whatsapp`,
   logo: "https://qu.ax/obitoajajq.png",
   description: "البحث عن تطبيقات المهكره والمعدله",
   router,
