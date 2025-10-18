@@ -1,0 +1,70 @@
+const express = require("express");
+const axios = require("axios");
+
+const router = express.Router();
+
+/**
+ * جلب معلومات تطبيق من API باستخدام ID
+ * @param {string} id - معرف التطبيق
+ * @returns {Promise<object>}
+ */
+async function fetchAppById(id = "") {
+  const url = `https://api.dfkz.xo.je/apis/Full/Apk/id.php?id=${encodeURIComponent(id)}`;
+  const headers = { "User-Agent": "Mozilla/5.0"};
+
+  try {
+    const response = await axios.get(url, { headers, timeout: 10000});
+    const data = response.data;
+
+    return {
+      dev: "obito",
+};
+} catch (err) {
+    console.error(`[ERROR] فشل جلب التطبيق:`, err.message);
+    throw err;
+}
+}
+
+/**
+ * نقطة النهاية الرئيسية
+ * مثال:
+ *   /api/search/apk/info?id=be-live-tv-plus
+ */
+router.get("/apk_download", async (req, res) => {
+  const { id} = req.query;
+  const appId = id || "";
+
+  if (!appId) {
+    return res.status(400).json({
+      status: 400,
+      success: false,
+      message: "يرجى إدخال معرف التطبيق (id)."
+});
+}
+
+  try {
+    const result = await fetchAppById(appId);
+    res.json({
+      status: 200,
+      success: true,
+...result
+});
+} catch (err) {
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: "حدث خطأ أثناء جلب معلومات التطبيق.",
+      error: err.message
+});
+}
+});
+
+module.exports = {
+  path: "/api/download",
+  name: "apk download",
+  type: "download",
+  url: `${global.t}/api/download/apk_download?id=be-live-tv-plus`,
+  logo: "https://qu.ax/obitoajajq.png",
+  description: "تحميل تطبيقات المهكره عبر الايدي",
+  router,
+};
