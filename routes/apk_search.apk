@@ -1,0 +1,84 @@
+
+// بسم الله الرحمن الرحيم ✨
+// APK Search Scraper API
+// تحويل من PHP إلى Node.js (Express API)
+
+const express = require("express");
+const axios = require("axios");
+
+const router = express.Router();
+
+/**
+ * جلب بيانات التطبيقات من API dfkz.xo.je
+ * @param {string} query - اسم التطبيق المطلوب
+ * @returns {Promise<object>}
+ */
+async function fetchApps(query = "") {
+  const url = `https://api.dfkz.xo.je/apis/Full/Apk/?q=${encodeURIComponent(query)}`;
+  const headers = { "User-Agent": "Mozilla/5.0"};
+
+  try {
+    const response = await axios.get(url, { headers, timeout: 10000});
+    const data = response.data;
+
+    const simplifiedResults = data.results.map(app => ({
+      title: app.title,
+      id: app.id,
+      date: app.date
+}));
+
+    return {
+      query: data.query,
+      results_count: data.results_count,
+      dev: "obito",
+      results: simplifiedResults
+};
+} catch (err) {
+    console.error(`[ERROR] فشل جلب التطبيقات:`, err.message);
+    throw err;
+}
+}
+
+/**
+ * نقطة النهاية الرئيسية
+ * مثال:
+ *   /api/search/apk?q=whatsapp
+ */
+router.get("/apk", async (req, res) => {
+  const { q} = req.query;
+  const searchQuery = q || "";
+
+  if (!searchQuery) {
+    return res.status(400).json({
+      status: 400,
+      success: false,
+      message: "يرجى إدخال اسم التطبيق للبحث عنه"
+});
+}
+
+  try {
+    const result = await fetchApps(searchQuery);
+    res.json({
+      status: 200,
+      success: true,
+...result
+});
+} catch (err) {
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: "حدث خطأ أثناء جلب التطبيقات.",
+      error: err.message
+});
+}
+});
+
+module.exports = {
+  path: "/api/search",
+  name: "apk search",
+  type: "search",
+  url: `${global.t}/api/search/apk?q=whatsapp`,
+  logo: "https://qu.ax/obitoajajq.png",
+  description: "البحث عن تطبيقات المهكره والمعدله",
+  router,
+};
