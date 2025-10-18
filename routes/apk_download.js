@@ -16,8 +16,10 @@ async function fetchAppById(id = "") {
     const response = await axios.get(url, { headers, timeout: 10000});
     const data = response.data;
 
+    // دمج البيانات مع توقيع المطور
     return {
       dev: "obito",
+...data
 };
 } catch (err) {
     console.error(`[ERROR] فشل جلب التطبيق:`, err.message);
