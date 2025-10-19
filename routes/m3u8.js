@@ -6,11 +6,11 @@ const router = express.Router();
 const base = "https://www.alloschool.com";
 
 /**
- * جلب عناوين الدروس فقط من AlloSchool
+ * جلب عناوين الدروس مع روابطها من AlloSchool
  * @param {string} query
  * @returns {Promise<object>}
  */
-async function fetchTitles(query = "") {
+async function fetchLessonTitles(query = "") {
   if (!query) return { status: false, message: "يرجى إدخال كلمة بحث."};
 
   try {
@@ -18,19 +18,23 @@ async function fetchTitles(query = "") {
     const { data: html} = await axios.get(searchUrl);
     const $ = cheerio.load(html);
 
-    const titles = [];
+    const results = [];
     $('ul.list-unstyled li a').each((i, el) => {
       const title = $(el).text().trim();
-      if (title) titles.push(title);
+      const href = $(el).attr('href');
+      const url = href.startsWith("http")? href: `${base}${href}`;
+      if (title && url.includes("/element/")) {
+        results.push({ title, url});
+}
 });
 
     return {
       status: true,
-      total: titles.length,
-      titles
+      total: results.length,
+      results
 };
 } catch (err) {
-    console.error("[ERROR] فشل جلب العناوين:", err.message);
+    console.error("[ERROR] فشل جلب الدروس:", err.message);
     return { status: false, message: "حدث خطأ أثناء البحث."};
 }
 }
@@ -38,9 +42,9 @@ async function fetchTitles(query = "") {
 /**
  * نقطة النهاية الرئيسية
  * مثال:
- *   /api/search/lesson-titles?q=math
+ *   /api/search/lesson-links?q=math
  */
-router.get("/lesson-titles", async (req, res) => {
+router.get("/lesson-links", async (req, res) => {
   const { q} = req.query;
   const query = q || "";
 
@@ -52,7 +56,7 @@ router.get("/lesson-titles", async (req, res) => {
 });
 }
 
-  const result = await fetchTitles(query);
+  const result = await fetchLessonTitles(query);
   if (!result.status) {
     return res.status(404).json({
       status: 404,
@@ -66,17 +70,16 @@ router.get("/lesson-titles", async (req, res) => {
     success: true,
     query,
     total: result.total,
-    titles: result.titles
+    results: result.results
 });
 });
 
 module.exports = {
   path: "/api/search",
-  name: "AlloSchool Title Scraper",
+  name: "AlloSchool Lesson Links",
   type: "search",
-  url: `${global.t}/api/search/lesson-titles?q=math`,
+  url: `${global.t}/api/search/alloschool?q=math`,
   logo: "",
-  description: "جلب عناوين الدروس فقط من AlloSchool بدون روابط تحميل.",
+  description: "البحث عن دروس و الفروض على موقع AlloSchool",
   router
 };
-
