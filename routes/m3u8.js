@@ -44,7 +44,7 @@ async function fetchLessonTitles(query = "") {
  * مثال:
  *   /api/search/lesson-links?q=math
  */
-router.get("/lesson-links", async (req, res) => {
+router.get("/alloschool", async (req, res) => {
   const { q} = req.query;
   const query = q || "";
 
