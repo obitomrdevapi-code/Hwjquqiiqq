@@ -1,75 +1,62 @@
+
 const express = require("express");
-const fetch = require("node-fetch");
+const { createServer} = require("@ansonzeng/sora-video-mcp-server");
 
 const router = express.Router();
 
 /**
- * إنشاء فيديو باستخدام نموذج Sora-2 عبر POST
+ * توليد فيديو باستخدام مكتبة Sora MCP
  * @param {string} prompt
  * @returns {Promise<object>}
  */
-async function generateSoraVideo(prompt = "") {
+async function generateVideo(prompt) {
   if (!prompt || prompt.length < 3) {
-    return { status: false, message: "يرجى إدخال وصف مناسب للفيديو."};
+    return { status: false, message: "يرجى إدخال وصف نصي مناسب."};
 }
 
   try {
-    const createJob = await fetch("https://omegatech-api.dixonomega.tech/api/ai/sora2-create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json"},
-      body: JSON.stringify({ prompt})
-}).then(res => res.json());
+    // إنشاء السيرفر المحلي للموديل
+    const sora = await createServer({
+      model: "sora-2",
+      orientation: "landscape",
+      duration: 8
+});
 
-    if (!createJob?.checkStatus) {
-      return { status: false, message: "فشل إنشاء المهمة."};
-}
+    // إنشاء المهمة
+    const job = await sora.createVideo({ prompt});
 
-    const { checkStatus} = createJob;
-    let videoUrl = null;
+    // انتظار النتيجة
+    const result = await sora.waitForCompletion(job.id);
 
-    for (let i = 0; i < 80; i++) {
-      const status = await fetch(checkStatus).then(res => res.json()).catch(() => ({}));
-
-      if (status.status === "done" && status.videoUrl) {
-        videoUrl = status.videoUrl;
-        break;
-}
-
-      if (status.status === "failed") {
-        return { status: false, message: "فشل في توليد الفيديو."};
-}
-
-      await new Promise(r => setTimeout(r, 5000));
-}
-
-    if (!videoUrl) {
-      return { status: false, message: "لم يتم توليد الفيديو بعد. حاول لاحقًا."};
+    if (!result ||!result.videoUrl) {
+      return { status: false, message: "لم يتم توليد الفيديو أو لم يكتمل بعد."};
 }
 
     return {
       status: true,
       prompt,
-      video: videoUrl
+      video: result.videoUrl
 };
 
 } catch (err) {
-    console.error("[ERROR] فشل توليد الفيديو:", err.message);
+    console.error("[ERROR] أثناء توليد الفيديو:", err.message);
     return { status: false, message: "حدث خطأ أثناء توليد الفيديو."};
 }
 }
 
 /**
  * نقطة النهاية الرئيسية
- * POST /api/ai/sora2
- * Body: { "prompt": "a cat playing piano"}
+ * مثال:
+ *   /api/sora?q=a cat playing piano
  */
-router.post("/sora2", async (req, res) => {
-  const { prompt} = req.body;
+router.get("/sora", async (req, res) => {
+  const { q} = req.query;
+  const prompt = q || "";
 
-  const result = await generateSoraVideo(prompt);
+  const result = await generateVideo(prompt);
   if (!result.status) {
-    return res.status(400).json({
-      status: 400,
+    return res.status(500).json({
+      status: 500,
       success: false,
       message: result.message
 });
@@ -85,10 +72,10 @@ router.post("/sora2", async (req, res) => {
 
 module.exports = {
   path: "/api/ai",
-  name: "Sora-2 Video Generator (POST)",
+  name: "Sora Video",
   type: "ai",
-  url: `${global.t}/api/ai/sora2`,
+  url: `${global.t}/api/ai/sora?q=a cat playing piano`,
   logo: "",
-  description: "إنشاء فيديوهات بالذكاء الاصطناعي باستخدام نموذج Sora-2 عبر ",
+  description: "توليد فيديوهات بالذكاء الاصطناعي باستخدام Sora",
   router
 };
