@@ -4,7 +4,7 @@ const fetch = require("node-fetch");
 const router = express.Router();
 
 /**
- * إنشاء فيديو باستخدام نموذج Sora-2
+ * إنشاء فيديو باستخدام نموذج Sora-2 عبر POST
  * @param {string} prompt
  * @returns {Promise<object>}
  */
@@ -14,7 +14,6 @@ async function generateSoraVideo(prompt = "") {
 }
 
   try {
-    // إنشاء المهمة
     const createJob = await fetch("https://omegatech-api.dixonomega.tech/api/ai/sora2-create", {
       method: "POST",
       headers: { "Content-Type": "application/json"},
@@ -28,7 +27,6 @@ async function generateSoraVideo(prompt = "") {
     const { checkStatus} = createJob;
     let videoUrl = null;
 
-    // التحقق من حالة المهمة (polling)
     for (let i = 0; i < 80; i++) {
       const status = await fetch(checkStatus).then(res => res.json()).catch(() => ({}));
 
@@ -62,11 +60,11 @@ async function generateSoraVideo(prompt = "") {
 
 /**
  * نقطة النهاية الرئيسية
- * مثال:
- *   /api/sora2?prompt=a cat playing piano
+ * POST /api/ai/sora2
+ * Body: { "prompt": "a cat playing piano"}
  */
-router.get("/sora2", async (req, res) => {
-  const { prompt} = req.query;
+router.post("/sora2", async (req, res) => {
+  const { prompt} = req.body;
 
   const result = await generateSoraVideo(prompt);
   if (!result.status) {
@@ -87,10 +85,10 @@ router.get("/sora2", async (req, res) => {
 
 module.exports = {
   path: "/api/ai",
-  name: "Sora-2 Video",
+  name: "Sora-2 Video Generator (POST)",
   type: "ai",
-  url: `${global.t}/api/ai/sora2?prompt=a cat playing piano`,
+  url: `${global.t}/api/ai/sora2`,
   logo: "",
-  description: "إنشاء فيديوهات بالذكاء الاصطناعي باستخدام نموذج Sora-2",
+  description: "إنشاء فيديوهات بالذكاء الاصطناعي باستخدام نموذج Sora-2 عبر ",
   router
 };
