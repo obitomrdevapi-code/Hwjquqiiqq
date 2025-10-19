@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "start2": "nodemon server.js"
-},
+  },
   "dependencies": {
     "express": "*",
     "@vitalets/google-translate-api": "*",
@@ -37,7 +37,7 @@
     "tough-cookie": "*",
     "util": "*",
     "yt-search": "^2.10.3",
-    "moment-timezone": "*",
-    "@ansonzeng/sora-video-mcp-server": "*"
-}
+    "tough-cookie": "*",
+    "moment-timezone": "*"
+  }
 }
