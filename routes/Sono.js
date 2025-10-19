@@ -60,9 +60,9 @@ async function triggerGeneration(token, payload) {
 }
 
 /**
- * انتظار نتيجة التوليد
+ * انتظار نتيجة التوليد (محسن لتقليل الوقت)
  */
-async function pollForResult(xAuth, maxAttempts = 30, delayMs = 20000) {
+async function pollForResult(xAuth, maxAttempts = 10, delayMs = 5000) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const res = await axios.get("https://api.sunora.mavtao.com/api/music/music_page?page=1&pagesize=50", {
@@ -97,13 +97,13 @@ async function pollForResult(xAuth, maxAttempts = 30, delayMs = 20000) {
 }
     await new Promise(resolve => setTimeout(resolve, delayMs));
 }
-  throw new Error("Song generation timed out after several attempts.");
+  throw new Error("⏳ انتهى الوقت ولم يتم توليد الأغنية.");
 }
 
 /**
  * نقطة النهاية الرئيسية
  * مثال:
- *   /api/suno?q=a cinematic pop song about a hero's journey
+ *   /api/suno?q=أغنية ملحمية عن بطل خارق
  */
 router.get("/suno", async (req, res) => {
   const { q} = req.query;
@@ -182,7 +182,7 @@ module.exports = {
   path: "/api/ai",
   name: "Suno AI Song",
   type: "ai",
-  url: `${global.t}/api/ai/suno?q=a cinematic pop song about a heros journey`,
+  url: `${global.t}/api/ai/suno?q=أغنية ملحمية عن بطل خارق`,
   logo: "",
   description: "توليد أغاني وموسيقى باستخدام Suno AI من وصف أو كلمات مخصصة",
   router
