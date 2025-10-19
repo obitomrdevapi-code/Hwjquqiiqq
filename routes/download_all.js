@@ -5,7 +5,7 @@ const cheerio = require("cheerio");
 const router = express.Router();
 
 /**
- * استخراج رابط PDF وصورة من صفحة درس AlloSchool
+ * استخراج رابط PDF وصورة وعنوان من صفحة درس AlloSchool
  * @param {string} url
  * @returns {Promise<object>}
  */
@@ -18,15 +18,29 @@ async function extractFromLesson(url = "") {
     const { data: html} = await axios.get(url);
     const $ = cheerio.load(html);
 
-    // استخراج رابط PDF
-    const pdfLink = $('a.btn.btn-lg.btn-primary[target="_blank"][href$=".pdf"]').attr("href") || null;
+    // المحاولة الأولى: المفاتيح التقليدية
+    let pdfLink = $('a.btn.btn-lg.btn-primary[target="_blank"][href$=".pdf"]').attr("href") || null;
+    let imageLink = $('div.document-viewer a[href$=".jpg"]').attr("href") || null;
 
-    // استخراج رابط الصورة الكبيرة
-    const imageLink = $('div.document-viewer a[href$=".jpg"]').attr("href") || null;
+    // المحاولة الثانية: المفاتيح البديلة
+    if (!pdfLink) {
+      pdfLink = $('a.btn.btn-primary[target="_blank"][href*="/pdf"]').attr("href") || null;
+}
+
+    if (!imageLink) {
+      imageLink = $('div.slde-content img').attr("src") || null;
+}
+
+    // استخراج العنوان من الهيدر
+    const title =
+      $('h4 span[style*="background-color"]').text().trim() ||
+      $('h4').text().trim() ||
+      "بدون عنوان";
 
     return {
       status: true,
       source: url,
+      title,
       pdf: pdfLink,
       image: imageLink
 };
@@ -58,6 +72,7 @@ router.get("/alloschool", async (req, res) => {
     status: 200,
     success: true,
     source: result.source,
+    title: result.title,
     pdf: result.pdf,
     image: result.image
 });
@@ -69,6 +84,6 @@ module.exports = {
   type: "download",
   url: `${global.t}/api/download/alloschool?url=https://www.alloschool.com/element/9713`,
   logo: "",
-  description: "استخراج رابط PDF وصورة من صفحة درس AlloSchool",
+  description: "استخراج رابط PDF وصورة وعنوان من صفحة درس AlloSchool",
   router
 };
