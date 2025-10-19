@@ -6,11 +6,11 @@ const router = express.Router();
 const base = "https://www.alloschool.com";
 
 /**
- * جلب جميع الدروس من AlloSchool حسب كلمة البحث
+ * جلب عناوين الدروس فقط من AlloSchool
  * @param {string} query
  * @returns {Promise<object>}
  */
-async function fetchLessons(query = "") {
+async function fetchTitles(query = "") {
   if (!query) return { status: false, message: "يرجى إدخال كلمة بحث."};
 
   try {
@@ -18,43 +18,19 @@ async function fetchLessons(query = "") {
     const { data: html} = await axios.get(searchUrl);
     const $ = cheerio.load(html);
 
-    const links = [];
+    const titles = [];
     $('ul.list-unstyled li a').each((i, el) => {
       const title = $(el).text().trim();
-      const href = $(el).attr('href');
-      if (/^https?:\/\/www\.alloschool\.com\/element\/\d+$/.test(href)) {
-        links.push({ title, url: href});
-}
+      if (title) titles.push(title);
 });
-
-    const results = [];
-
-    for (const item of links) {
-      const { data: pageHtml} = await axios.get(item.url);
-      const $$ = cheerio.load(pageHtml);
-      const pdfs = [];
-
-      $$('a').each((i, el) => {
-        const href = $$(el).attr('href');
-        if (href && href.endsWith('.pdf')) {
-          pdfs.push(href);
-}
-});
-
-      results.push({
-        title: item.title || "بدون عنوان",
-        source: item.url,
-        pdf: pdfs[0] || null
-});
-}
 
     return {
       status: true,
-      total: results.length,
-      results
+      total: titles.length,
+      titles
 };
 } catch (err) {
-    console.error("[ERROR] فشل جلب الدروس:", err.message);
+    console.error("[ERROR] فشل جلب العناوين:", err.message);
     return { status: false, message: "حدث خطأ أثناء البحث."};
 }
 }
@@ -62,9 +38,9 @@ async function fetchLessons(query = "") {
 /**
  * نقطة النهاية الرئيسية
  * مثال:
- *   /api/search/lesson?q=math
+ *   /api/search/lesson-titles?q=math
  */
-router.get("/lesson", async (req, res) => {
+router.get("/lesson-titles", async (req, res) => {
   const { q} = req.query;
   const query = q || "";
 
@@ -76,7 +52,7 @@ router.get("/lesson", async (req, res) => {
 });
 }
 
-  const result = await fetchLessons(query);
+  const result = await fetchTitles(query);
   if (!result.status) {
     return res.status(404).json({
       status: 404,
@@ -90,17 +66,16 @@ router.get("/lesson", async (req, res) => {
     success: true,
     query,
     total: result.total,
-    results: result.results
+    titles: result.titles
 });
 });
 
 module.exports = {
   path: "/api/search",
-  name: "AlloSchool Lesson Search",
+  name: "AlloSchool Title Scraper",
   type: "search",
-  url: `${global.t}/api/search/lesson?q=math`,
-  logo: "https://qu.ax/obitoajajq.png",
-  description: "البحث عن جميع الدروس من AlloSchool مع روابط تحميل PDF.",
+  url: `${global.t}/api/search/lesson-titles?q=math`,
+  logo: "",
+  description: "جلب عناوين الدروس فقط من AlloSchool بدون روابط تحميل.",
   router
 };
-
