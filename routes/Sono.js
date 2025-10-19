@@ -4,9 +4,6 @@ const { v4: uuidv4} = require("uuid");
 
 const router = express.Router();
 
-/**
- * توليد سلسلة عشوائية لتتبع Suno
- */
 function randomHex(length) {
   const chars = "abcdef0123456789";
   return Array.from({ length}, () => chars[Math.floor(Math.random() * chars.length)]).join("");
@@ -16,9 +13,6 @@ function gieneticTrace() {
   return `${randomHex(32)}-${randomHex(16)}`;
 }
 
-/**
- * تسجيل الدخول إلى Suno API
- */
 async function login(deviceId) {
   const res = await axios.post("https://api.sunora.mavtao.com/api/auth/login", {
     device_id: deviceId
@@ -36,9 +30,6 @@ async function login(deviceId) {
   return res.data?.data?.token || null;
 }
 
-/**
- * إرسال طلب توليد الأغنية
- */
 async function triggerGeneration(token, payload) {
   const isCustom = 'prompt' in payload;
   const url = isCustom
@@ -59,10 +50,7 @@ async function triggerGeneration(token, payload) {
 });
 }
 
-/**
- * انتظار نتيجة التوليد (محسن لتقليل الوقت)
- */
-async function pollForResult(xAuth, maxAttempts = 10, delayMs = 5000) {
+async function pollForResult(xAuth, maxAttempts = 30, delayMs = 20000) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const res = await axios.get("https://api.sunora.mavtao.com/api/music/music_page?page=1&pagesize=50", {
@@ -82,14 +70,10 @@ async function pollForResult(xAuth, maxAttempts = 10, delayMs = 5000) {
 
       if (doneSongs.length> 0) {
         return doneSongs.map(r => ({
-          id: r.song_id,
-          title: r.title || "Untitled",
           tags: r.meta_tags,
           prompt: r.meta_prompt,
           audioUrl: r.audio_url,
-          videoUrl: r.video_url,
-          imageUrl: r.image_url,
-          model: r.model_name
+          imageUrl: r.image_url
 }));
 }
 } catch (err) {
@@ -97,14 +81,9 @@ async function pollForResult(xAuth, maxAttempts = 10, delayMs = 5000) {
 }
     await new Promise(resolve => setTimeout(resolve, delayMs));
 }
-  throw new Error("⏳ انتهى الوقت ولم يتم توليد الأغنية.");
+  throw new Error("Song generation timed out after several attempts.");
 }
 
-/**
- * نقطة النهاية الرئيسية
- * مثال:
- *   /api/suno?q=أغنية ملحمية عن بطل خارق
- */
 router.get("/suno", async (req, res) => {
   const { q} = req.query;
   const text = q || "";
@@ -134,7 +113,7 @@ router.get("/suno", async (req, res) => {
         tags: style
 };
 } else if (text.startsWith('--instrumental')) {
-const description = text.replace('--instrumental', '').trim();
+      const description = text.replace('--instrumental', '').trim();
       if (!description) throw new Error("يرجى إدخال وصف للموسيقى الآلية.");
       payload = {
         continue_at: null, continue_clip_id: null, mv: null,
@@ -144,7 +123,7 @@ const description = text.replace('--instrumental', '').trim();
 };
 } else {
       payload = {
-        continue_at: null, continue_clip_id: null, mv: null,
+      continue_at: null, continue_clip_id: null, mv: null,
         description: text,
         title: "", mood: "", music_style: "",
         instrumental_only: false
@@ -182,7 +161,7 @@ module.exports = {
   path: "/api/ai",
   name: "Suno AI Song",
   type: "ai",
-  url: `${global.t}/api/ai/suno?q=أغنية ملحمية عن بطل خارق`,
+  url: `${global.t}/api/ai/suno?q=اغنية عن الحب و رومانسية`,
   logo: "",
   description: "توليد أغاني وموسيقى باستخدام Suno AI من وصف أو كلمات مخصصة",
   router
