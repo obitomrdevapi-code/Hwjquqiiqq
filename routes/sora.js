@@ -4,7 +4,7 @@ const fetch = require("node-fetch");
 const router = express.Router();
 
 /**
- * توليد فيديو باستخدام واجهة Sora-2
+ * توليد فيديو باستخدام Sora-2 API
  * @param {string} prompt
  * @returns {Promise<object>}
  */
@@ -14,7 +14,6 @@ async function generateVideo(prompt) {
 }
 
   try {
-    // إنشاء المهمة عبر POST
     const createJob = await fetch("https://omegatech-api.dixonomega.tech/api/ai/sora2-create", {
       method: "POST",
       headers: { "Content-Type": "application/json"},
@@ -28,7 +27,6 @@ async function generateVideo(prompt) {
     const { checkStatus} = createJob;
     let videoUrl, done = false;
 
-    // انتظار اكتمال المهمة
     for (let i = 0; i < 80; i++) {
       const status = await fetch(checkStatus).then(r => r.json()).catch(() => ({}));
       if (status.status === "done" && status.videoUrl) {
@@ -68,15 +66,13 @@ router.get("/sora", async (req, res) => {
   const result = await generateVideo(prompt);
   if (!result.status) {
     return res.status(500).json({
-      status: 500,
-      success: false,
+      status: false,
       message: result.message
 });
 }
 
   res.json({
-    status: 200,
-    success: true,
+    status: true,
     prompt: result.prompt,
     video: result.video
 });
@@ -88,6 +84,6 @@ module.exports = {
   type: "ai",
   url: `${global.t}/api/ai/sora?q=a cat playing piano`,
   logo: "",
-  description: "توليد فيديوهات بالذكاء الاصطناعي باستخدام Sora-2 عبر",
+  description: "توليد فيديوهات بالذكاء الاصطناعي باستخدام Sora-2",
   router
 };
