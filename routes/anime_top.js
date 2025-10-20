@@ -3,10 +3,10 @@ const fetch = require("node-fetch");
 const cheerio = require("cheerio");
 
 const router = express.Router();
-const BASE_URL = "https://myanimelist.net/topanime.php";
+const BASE_URL = "https://api.allorigins.win/raw?url=https://myanimelist.net/topanime.php";
 
 /**
- * جلب قائمة أفضل الأنميات من MyAnimeList
+ * جلب قائمة أفضل الأنميات من MyAnimeList عبر proxy لتجنب مشاكل Vercel
  * @param {number} limit
  * @returns {Promise<object>}
  */
@@ -68,5 +68,6 @@ module.exports = {
   type: "anime",
   url: `${global.t}/api/anime/top?limit=5`,
   logo: "",
-  description: "جلب توب الانميات الحاليا من موقع MyAnimeList",
+  description: "جلب أفضل الأنميات من MyAnimeList ",
   router
+};
