@@ -79,10 +79,10 @@ router.get("/sora", async (req, res) => {
 });
 
 module.exports = {
-  path: "/api/ai",
+  path: "/api/tst",
   name: "Sora Video",
-  type: "ai",
-  url: `${global.t}/api/ai/sora?q=a cat playing piano`,
+  type: "tst",
+  url: `${global.t}/api/tst/sora?q=a cat playing piano`,
   logo: "",
   description: "توليد فيديوهات بالذكاء الاصطناعي باستخدام Sora-2",
   router
