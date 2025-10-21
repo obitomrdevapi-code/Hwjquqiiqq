@@ -1,22 +1,16 @@
 const express = require("express");
 const axios = require("axios");
 const FormData = require("form-data");
-const fs = require("fs");
-const path = require("path");
-const { v4: uuidv4 } = require('uuid');
+const { Readable } = require("stream");
 
 // ===================================
-// X-DESIGN VIDEO BACKGROUND REMOVER - IMPROVED
+// X-DESIGN VIDEO BACKGROUND REMOVER - VERCEL COMPATIBLE
 // ===================================
 
 class XDesignBackgroundRemover {
   constructor() {
     this.baseURL = "https://www.x-design.com";
     this.apiEndpoint = "/video-background-remover/edit";
-    this.tempDir = path.join(process.cwd(), 'temp'); // استخدام المسار الحالي للعمل
-    
-    // إنشاء مجلد temp إذا لم يكن موجوداً
-    this.ensureTempDir();
     
     this.headers = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
@@ -32,108 +26,28 @@ class XDesignBackgroundRemover {
   }
 
   /**
-   * التأكد من وجود مجلد temp
-   */
-  ensureTempDir() {
-    try {
-      if (!fs.existsSync(this.tempDir)) {
-        fs.mkdirSync(this.tempDir, { recursive: true });
-        console.log(`Created temp directory: ${this.tempDir}`);
-      }
-    } catch (error) {
-      console.error('Error creating temp directory:', error);
-      // استخدام مجلد مؤقت بديل
-      this.tempDir = path.join(__dirname, '..', 'temp');
-      if (!fs.existsSync(this.tempDir)) {
-        fs.mkdirSync(this.tempDir, { recursive: true });
-      }
-    }
-  }
-
-  /**
-   * Download video from URL - IMPROVED
+   * Download video as buffer (without filesystem)
    */
   async downloadVideo(videoUrl) {
-    let tempPath = null;
-    
     try {
       console.log(`Downloading video from: ${videoUrl}`);
       
-      // التحقق من صحة الرابط أولاً
-      const headResponse = await axios.head(videoUrl, { timeout: 10000 });
-      const contentType = headResponse.headers['content-type'];
-      
-      if (!contentType || !contentType.includes('video')) {
-        console.warn('URL might not be a video. Content-Type:', contentType);
-      }
-
       const response = await axios({
         method: 'GET',
         url: videoUrl,
-        responseType: 'stream',
-        timeout: 120000, // 2 minutes
-        maxContentLength: 100 * 1024 * 1024, // 100MB max
+        responseType: 'arraybuffer', // استخدام arraybuffer بدلاً من stream
+        timeout: 60000,
+        maxContentLength: 50 * 1024 * 1024, // 50MB max
       });
 
-      // إنشاء اسم ملف فريد
-      const fileId = uuidv4();
-      tempPath = path.join(this.tempDir, `video_${fileId}.mp4`);
-      
-      const writer = fs.createWriteStream(tempPath);
-
-      return new Promise((resolve, reject) => {
-        let downloadedBytes = 0;
-        let totalBytes = parseInt(response.headers['content-length'], 10) || 0;
-
-        response.data.on('data', (chunk) => {
-          downloadedBytes += chunk.length;
-          if (totalBytes > 0) {
-            const progress = (downloadedBytes / totalBytes * 100).toFixed(2);
-            console.log(`Download progress: ${progress}%`);
-          }
-        });
-
-        response.data.pipe(writer);
-        
-        writer.on('finish', () => {
-          console.log(`Video downloaded successfully to: ${tempPath}`);
-          
-          // التحقق من وجود الملف وحجمه
-          const stats = fs.statSync(tempPath);
-          if (stats.size === 0) {
-            fs.unlinkSync(tempPath);
-            reject(new Error('Downloaded file is empty'));
-            return;
-          }
-          
-          resolve(tempPath);
-        });
-        
-        writer.on('error', (error) => {
-          if (tempPath && fs.existsSync(tempPath)) {
-            fs.unlinkSync(tempPath);
-          }
-          reject(new Error(`File write error: ${error.message}`));
-        });
-        
-        response.data.on('error', (error) => {
-          if (tempPath && fs.existsSync(tempPath)) {
-            fs.unlinkSync(tempPath);
-          }
-          reject(new Error(`Download stream error: ${error.message}`));
-        });
-      });
+      console.log(`Video downloaded successfully, size: ${response.data.length} bytes`);
+      return response.data;
       
     } catch (error) {
-      // تنظيف الملف المؤقت في حالة الخطأ
-      if (tempPath && fs.existsSync(tempPath)) {
-        fs.unlinkSync(tempPath);
-      }
-      
-      if (error.code === 'ENOENT') {
-        throw new Error('Cannot create temporary directory. Check filesystem permissions.');
-      } else if (error.response) {
+      if (error.response) {
         throw new Error(`Download failed: ${error.response.status} - ${error.response.statusText}`);
+      } else if (error.code === 'ENOTFOUND') {
+        throw new Error('Cannot resolve video URL. Please check the link.');
       } else {
         throw new Error(`Download failed: ${error.message}`);
       }
@@ -141,24 +55,24 @@ class XDesignBackgroundRemover {
   }
 
   /**
-   * Upload video to X-Design service - IMPROVED
+   * Upload video buffer directly to X-Design
    */
-  async uploadVideo(videoPath) {
+  async uploadVideo(videoBuffer, originalUrl) {
     try {
       console.log('Uploading video to X-Design...');
 
-      // التحقق من وجود الملف
-      if (!fs.existsSync(videoPath)) {
-        throw new Error('Video file not found for upload');
-      }
-
-      const stats = fs.statSync(videoPath);
-      if (stats.size === 0) {
-        throw new Error('Video file is empty');
-      }
-
       const formData = new FormData();
-      formData.append('file', fs.createReadStream(videoPath));
+      
+      // إنشاء stream من buffer
+      const videoStream = Readable.from(videoBuffer);
+      
+      // إضافة الملف مع اسم مناسب
+      const fileName = `video_${Date.now()}.mp4`;
+      formData.append('file', videoStream, {
+        filename: fileName,
+        contentType: 'video/mp4'
+      });
+      
       formData.append('type', 'video');
 
       const uploadResponse = await axios.post(
@@ -170,7 +84,7 @@ class XDesignBackgroundRemover {
             'User-Agent': this.headers['User-Agent'],
             'Referer': this.headers['Referer']
           },
-          timeout: 180000, // 3 minutes
+          timeout: 120000,
           maxContentLength: Infinity,
           maxBodyLength: Infinity
         }
@@ -180,12 +94,13 @@ class XDesignBackgroundRemover {
       return uploadResponse.data;
       
     } catch (error) {
+      console.error('Upload error:', error.response?.data || error.message);
       throw new Error(`Upload failed: ${error.message}`);
     }
   }
 
   /**
-   * Process video background removal - IMPROVED
+   * Process video background removal
    */
   async removeBackground(uploadData) {
     try {
@@ -203,7 +118,7 @@ class XDesignBackgroundRemover {
         }
       };
 
-      console.log('Sending processing request:', payload);
+      console.log('Sending processing request:', JSON.stringify(payload));
 
       const processResponse = await axios.post(
         `${this.baseURL}/api/video/remove-background`,
@@ -218,6 +133,7 @@ class XDesignBackgroundRemover {
       return processResponse.data;
       
     } catch (error) {
+      console.error('Background removal error:', error.response?.data || error.message);
       throw new Error(`Background removal failed: ${error.message}`);
     }
   }
@@ -242,46 +158,15 @@ class XDesignBackgroundRemover {
   }
 
   /**
-   * Clean up temporary files
-   */
-  cleanupTempFiles() {
-    try {
-      if (fs.existsSync(this.tempDir)) {
-        const files = fs.readdirSync(this.tempDir);
-        const now = Date.now();
-        const oneHour = 60 * 60 * 1000;
-
-        files.forEach(file => {
-          const filePath = path.join(this.tempDir, file);
-          const stats = fs.statSync(filePath);
-          
-          // حذف الملفات الأقدم من ساعة
-          if (now - stats.mtime.getTime() > oneHour) {
-            fs.unlinkSync(filePath);
-            console.log(`Cleaned up old file: ${file}`);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error cleaning temp files:', error);
-    }
-  }
-
-  /**
-   * Main method to remove background from video URL - IMPROVED
+   * Main method to remove background from video URL - VERCEL COMPATIBLE
    */
   async processVideo(videoUrl) {
-    let tempVideoPath = null;
-
     try {
-      // تنظيف الملفات المؤقتة القديمة
-      this.cleanupTempFiles();
-
-      // Step 1: Download video
-      tempVideoPath = await this.downloadVideo(videoUrl);
-
-      // Step 2: Upload to X-Design
-      const uploadData = await this.uploadVideo(tempVideoPath);
+      // Step 1: Download video as buffer (no filesystem)
+      const videoBuffer = await this.downloadVideo(videoUrl);
+      
+      // Step 2: Upload directly to X-Design
+      const uploadData = await this.uploadVideo(videoBuffer, videoUrl);
       
       if (!uploadData.file_id && !uploadData.id) {
         throw new Error('No file ID received from upload');
@@ -299,8 +184,8 @@ class XDesignBackgroundRemover {
       // Step 4: Poll for completion
       console.log(`Polling for task completion: ${taskId}`);
       
-      const POLL_INTERVAL = 15000; // 15 seconds
-      const MAX_ATTEMPTS = 40; // 10 minutes max
+      const POLL_INTERVAL = 10000; // 10 seconds
+      const MAX_ATTEMPTS = 30; // 5 minutes max
       
       let attempts = 0;
       
@@ -308,21 +193,10 @@ class XDesignBackgroundRemover {
         attempts++;
         await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
 
-        let status;
-        try {
-          status = await this.checkStatus(taskId);
-          console.log(`Status check ${attempts}:`, status.status, status.progress || 0);
-        } catch (statusError) {
-          console.warn(`Status check ${attempts} failed:`, statusError.message);
-          continue; // استمر في المحاولة
-        }
+        const status = await this.checkStatus(taskId);
+        console.log(`Status check ${attempts}:`, status.status);
 
         if (status.status === 'completed') {
-          // تنظيف الملف المؤقت
-          if (tempVideoPath && fs.existsSync(tempVideoPath)) {
-            fs.unlinkSync(tempVideoPath);
-          }
-
           return {
             success: true,
             task_id: taskId,
@@ -332,38 +206,40 @@ class XDesignBackgroundRemover {
         } else if (status.status === 'failed') {
           throw new Error(status.error || 'فشل في معالجة الفيديو');
         }
+        
+        // Continue polling if still processing
       }
 
       throw new Error('انتهى وقت المعالجة');
 
     } catch (error) {
-      // تنظيف الملف المؤقت في حالة الخطأ
-      if (tempVideoPath && fs.existsSync(tempVideoPath)) {
-        try {
-          fs.unlinkSync(tempVideoPath);
-        } catch (cleanupError) {
-          console.error('Error cleaning temp file:', cleanupError);
-        }
-      }
-      
       throw error;
     }
   }
 }
 
 // ===================================
-// EXPRESS ROUTER IMPLEMENTATION - IMPROVED
+// EXPRESS ROUTER IMPLEMENTATION - VERCEL COMPATIBLE
 // ===================================
 
 const bgRemover = new XDesignBackgroundRemover();
 
 const router = express.Router();
 
+// زيادة حجم payload لاستيعاب الفيديوهات
+router.use(express.json({ limit: '50mb' }));
+router.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
 /**
- * Video Background Removal API - IMPROVED
+ * Video Background Removal API - VERCEL COMPATIBLE
  */
 router.get("/remove-bg", async (req, res) => {
-  const { url, quality, format } = req.query;
+  // تعيين رؤوس CORS لتفادي مشاكل Vercel
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  const { url } = req.query;
 
   if (!url) {
     return res.status(400).json({
@@ -374,15 +250,7 @@ router.get("/remove-bg", async (req, res) => {
 
   // Validate URL
   try {
-    const urlObj = new URL(url);
-    
-    // التحقق من البروتوكولات المسموحة
-    if (!['http:', 'https:'].includes(urlObj.protocol)) {
-      return res.status(400).json({
-        status: false,
-        message: "الرابط يجب أن يستخدم HTTP أو HTTPS"
-      });
-    }
+    new URL(url);
   } catch (error) {
     return res.status(400).json({
       status: false,
@@ -406,37 +274,21 @@ router.get("/remove-bg", async (req, res) => {
   } catch (error) {
     console.error("[BACKGROUND REMOVAL ERROR]:", error.message);
     
-    // رسائل خطأ أكثر تحديداً
-    let userMessage = "حدث خطأ أثناء إزالة خلفية الفيديو";
-    let suggestion = "تأكد من أن الرابط صالح وأن الفيديو لا يتعدى 100MB";
-    
-    if (error.message.includes('ENOENT') || error.message.includes('permissions')) {
-      userMessage = "مشكلة في نظام الملفات";
-      suggestion = "تحقق من صلاحيات الكتابة في المجلد";
-    } else if (error.message.includes('timeout')) {
-      userMessage = "انتهت مهلة العملية";
-      suggestion = "حاول مرة أخرى مع فيديو أصغر حجماً";
-    } else if (error.message.includes('network') || error.message.includes('ECONNREFUSED')) {
-      userMessage = "مشكلة في الاتصال بالخادم";
-      suggestion = "تحقق من اتصال الإنترنت وحاول مرة أخرى";
-    }
-    
     res.status(500).json({
       status: false,
-      message: userMessage,
+      message: "حدث خطأ أثناء إزالة خلفية الفيديو",
       error: error.message,
-      suggestion: suggestion
+      suggestion: "تأكد من أن الرابط صالح وأن الفيديو لا يتعدى 50MB"
     });
   }
 });
-
-// الباقي من الكود يبقى كما هو...
-// [Status check endpoint, Download endpoint, Test endpoint]
 
 /**
  * Status check endpoint
  */
 router.get("/remove-bg/status", async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  
   const { task_id } = req.query;
 
   if (!task_id) {
@@ -470,9 +322,11 @@ router.get("/remove-bg/status", async (req, res) => {
 });
 
 /**
- * Direct download endpoint
+ * Proxy download endpoint (لتفادي مشاكل CORS)
  */
 router.get("/remove-bg/download", async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  
   const { url } = req.query;
 
   if (!url) {
@@ -490,11 +344,12 @@ router.get("/remove-bg/download", async (req, res) => {
       timeout: 120000
     });
 
-    // Set appropriate headers
-    res.setHeader('Content-Type', 'video/mp4');
+    // تعيين الرؤوس المناسبة
+    res.setHeader('Content-Type', response.headers['content-type'] || 'video/mp4');
     res.setHeader('Content-Disposition', `attachment; filename="video_no_bg_${Date.now()}.mp4"`);
+    res.setHeader('Cache-Control', 'no-cache');
 
-    // Pipe the video stream to response
+    // توجيه البيانات مباشرة
     response.data.pipe(res);
 
   } catch (error) {
@@ -508,14 +363,23 @@ router.get("/remove-bg/download", async (req, res) => {
   }
 });
 
-// ===================================
-// SIMPLE TEST ENDPOINT
-// ===================================
+/**
+ * Health check endpoint for Vercel
+ */
+router.get("/health", (req, res) => {
+  res.json({
+    status: true,
+    message: "Service is running",
+    timestamp: new Date().toISOString()
+  });
+});
 
 /**
- * Test endpoint - Simulate background removal
+ * Test endpoint - بدون استخدام نظام الملفات
  */
 router.get("/remove-bg/test", async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  
   const { url } = req.query;
 
   if (!url) {
@@ -525,26 +389,42 @@ router.get("/remove-bg/test", async (req, res) => {
     });
   }
 
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  try {
+    // اختبار التحميل فقط
+    const testBuffer = await bgRemover.downloadVideo(url);
+    
+    res.json({
+      status: true,
+      message: "تم اختبار التحميل بنجاح",
+      file_size: `${(testBuffer.length / 1024 / 1024).toFixed(2)} MB`,
+      note: "الخدمة جاهزة للمعالجة",
+      original_url: url
+    });
 
-  // Return mock response for testing
-  res.json({
-    status: true,
-    message: "وضع الاختبار - تم محاكاة إزالة الخلفية بنجاح",
-    task_id: `test_task_${Date.now()}`,
-    download_url: "https://example.com/processed_video.mp4",
-    note: "هذا استجابة تجريبية، الخدمة الفعلية تحتاج اتصال حقيقي",
-    original_url: url
-  });
+  } catch (error) {
+    res.json({
+      status: false,
+      message: "فشل اختبار التحميل",
+      error: error.message,
+      suggestion: "تأكد من صحة رابط الفيديو"
+    });
+  }
+});
+
+// معالجة طلبات OPTIONS لـ CORS
+router.options('*', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.status(200).end();
 });
 
 module.exports = {
   path: "/api/ai",
   name: "X-Design Background Remover",
   type: "ai",
-  url: `${global.t}/api/ai/remove-bg?url=https://files.catbox.moe/ry9yl8.mp4`,
+  url: `/api/ai/remove-bg?url=https://files.catbox.moe/ry9yl8.mp4`,
   logo: "",
-  description: "إزالة خلفية الفيديو باستخدام الذكاء الاصطناعي",
+  description: "إزالة خلفية الفيديو باستخدام الذكاء الاصطناعي - متوافق مع Vercel",
   router
 };
