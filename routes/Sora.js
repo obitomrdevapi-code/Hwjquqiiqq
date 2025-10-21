@@ -28,7 +28,7 @@ const SpoofHead = (extra = {}) => {
 };
 
 // ===================================
-// 2. SORA VIDEO SERVICE CLASS
+// 2. SORA VIDEO SERVICE CLASS - IMPROVED
 // ===================================
 
 class SoraVideo {
@@ -36,9 +36,10 @@ class SoraVideo {
     this.config = {
       baseURL: "https://aiomnigen.com",
       endpoint: "/video/sora",
-      timeout: 3e4, // 30 seconds
+      timeout: 60000, // Increased to 60 seconds
       httpsAgent: new https.Agent({
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        keepAlive: true
       })
     };
     this.axiosInstance = axios.create({
@@ -51,7 +52,7 @@ class SoraVideo {
   buildHeader(action, routerState) {
     return {
       accept: "text/x-component",
-      "accept-language": "id-ID",
+      "accept-language": "en-US,en;q=0.9",
       "cache-control": "no-cache",
       "content-type": "text/plain;charset=UTF-8",
       "next-action": action,
@@ -60,70 +61,89 @@ class SoraVideo {
       pragma: "no-cache",
       priority: "u=1, i",
       referer: "https://aiomnigen.com/video/sora",
-      "sec-ch-ua": '"Chromium";v="127", "Not)A;Brand";v="99", "Microsoft Edge Simulate";v="127", "Lemur";v="127"',
-      "sec-ch-ua-mobile": "?1",
-      "sec-ch-ua-platform": '"Android"',
+      "sec-ch-ua": '"Chromium";v="127", "Not)A;Brand";v="99", "Microsoft Edge";v="127"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"Windows"',
       "sec-fetch-dest": "empty",
       "sec-fetch-mode": "cors",
       "sec-fetch-site": "same-origin",
-      "user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Mobile Safari/537.36",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0",
       ...SpoofHead()
     };
   }
 
   /**
-   * Parses the multi-line, colon-separated response format (e.g., 1:{"key":"value"}).
+   * Improved response parser with better error handling
    */
-  pr(dt) {
-    const result = {};
-    const lines = dt.split("\n").filter(line => line.trim());
-    for (const line of lines) {
-      const match = line.match(/^(\d+):(.+)$/);
-      if (match) {
-        const index = parseInt(match[1]);
-        const jsonStr = match[2].trim();
-        try {
-          const parsed = JSON.parse(jsonStr);
-          result[index] = parsed;
-        } catch (e) {
-          // Warning silenced for cleaner output
+  parseResponse(data) {
+    try {
+      const result = {};
+      const lines = data.split("\n").filter(line => line.trim());
+      
+      for (const line of lines) {
+        const match = line.match(/^(\d+):(.+)$/);
+        if (match) {
+          const index = parseInt(match[1]);
+          const jsonStr = match[2].trim();
+          try {
+            const parsed = JSON.parse(jsonStr);
+            result[index] = parsed;
+          } catch (parseError) {
+            console.warn(`Failed to parse JSON at index ${index}:`, jsonStr.substring(0, 100));
+          }
         }
       }
+      return result;
+    } catch (error) {
+      console.error("Error parsing response:", error.message);
+      return {};
     }
-    return result;
   }
 
   async generate({ prompt, imageUrl, ...rest }) {
     try {
-      let ctrlImg = [];
+      console.log("Starting video generation with prompt:", prompt.substring(0, 100) + "...");
+      
+      let controlImages = [];
+      
+      // Handle image URL if provided
       if (imageUrl) {
-        if (typeof imageUrl === "string" && imageUrl.startsWith("http")) {
-          const imgRes = await axios.get(imageUrl, { responseType: "arraybuffer" });
-          const b64 = Buffer.from(imgRes.data).toString("base64");
-          ctrlImg = [`data:image/jpeg;base64,${b64}`];
-        } else if (Buffer.isBuffer(imageUrl)) {
-          const b64 = imageUrl.toString("base64");
-          ctrlImg = [`data:image/jpeg;base64,${b64}`];
-        } else {
-          ctrlImg = [imageUrl];
+        try {
+          if (typeof imageUrl === "string" && imageUrl.startsWith("http")) {
+            console.log("Downloading reference image...");
+            const imgRes = await axios.get(imageUrl, { 
+              responseType: "arraybuffer",
+              timeout: 30000 
+            });
+            const b64 = Buffer.from(imgRes.data).toString("base64");
+            controlImages = [`data:image/jpeg;base64,${b64}`];
+          } else if (Buffer.isBuffer(imageUrl)) {
+            const b64 = imageUrl.toString("base64");
+            controlImages = [`data:image/jpeg;base64,${b64}`];
+          } else {
+            controlImages = [imageUrl];
+          }
+          console.log("Reference image processed successfully");
+        } catch (imgError) {
+          console.warn("Failed to process image, continuing without reference image:", imgError.message);
         }
       }
 
-      const ar = rest?.aspect_ratio || "9:16";
-      const w = ar === "16:9" ? 1280 : 720;
-      const h = ar === "16:9" ? 720 : 1280;
-      const vt = rest?.video_type || "standard";
-      const secs = rest?.seconds || "15";
-      const prc = `create video: orientation : portrait , ${prompt}`;
+      // Build parameters
+      const aspectRatio = rest?.aspect_ratio || "9:16";
+      const videoType = rest?.video_type || "standard";
+      const seconds = rest?.seconds || "15";
       
-      const pd = [{
+      const processedPrompt = `create video: orientation : portrait , ${prompt}`;
+      
+      const payload = [{
         model_id: "sora-2-tuzi",
         prompt: prompt,
-        prompt_process: prc,
+        prompt_process: processedPrompt,
         seed: 0,
         randomize_seed: true,
-        aspect_ratio: ar,
-        control_images: ctrlImg,
+        aspect_ratio: aspectRatio,
+        control_images: controlImages,
         control_images_2: [],
         control_files: [],
         control_files_2: [],
@@ -133,234 +153,99 @@ class SoraVideo {
         num_outputs: 1,
         meta_data: {
           prompt_preset: "default",
-          video_type: vt,
-          seconds: secs
+          video_type: videoType,
+          seconds: seconds
         },
         use_credits: 1,
-        width: w,
-        height: h,
+        width: aspectRatio === "16:9" ? 1280 : 720,
+        height: aspectRatio === "16:9" ? 720 : 1280,
         duration: "5",
         resolution: "480p",
         generation_type: "video",
         model_config: { 
-            id: "sora-2-tuzi",
-            label: "Sora 2 (Slow Beta)",
-            description: "Most advanced video model from openai",
-            supportedAspectRatios: ["9:16", "16:9"],
-            tag: ["Text to Video", "Image to Video"],
-            badge: [],
-            useCredits: 1,
-            supportAddFiles: [{
-              name: "control_images",
-              label: "Reference Image",
-              type: "image",
-              isRequired: false,
-              isSupport: 1
-            }],
-            customParameters: [{
-              name: "video_type",
-              label: "Type",
-              type: "select",
-              defaultValue: "standard",
-              description: "Choose the duration of the video.",
-              multiple: 4,
-              options: [{
-                value: "standard",
-                label: "Standard"
-              }, {
-                value: "pro",
-                label: "Pro (Support 25s)"
-              }]
-            }, {
-              name: "seconds",
-              label: "Seconds",
-              type: "select",
-              defaultValue: "15",
-              description: "Choose the duration of the video.",
-              options: [{
-                value: "15",
-                label: "15"
-              }, {
-                value: "25",
-                label: "25 (Only Pro)"
-              }]
-            }],
-            type: "video",
-            options: {
-              note: ["This version uses fewer credits but runs more slowly.", "Input images with faces of humans are currently rejected.", "Pro video wait time is approximately 6-8 minutes, more than twice that of the standard version."]
-            },
-            apiInputs: {
-              default: {
-                provider: "tuzi",
-                endpoint: "https://api.tu-zi.com/v1/videos",
-                rules: [{
-                  to: "model",
-                  from: "meta_data.video_type",
-                  transform: [{
-                    op: "enumMap",
-                    map: {
-                      standard: "sora-2",
-                      pro: "sora-2-pro"
-                    },
-                    default: "sora-2"
-                  }]
-                }, {
-                  to: "prompt",
-                  from: ["prompt_process", "prompt"],
-                  transform: [{
-                    op: "coalesce"
-                  }]
-                }, {
-                  to: "seconds",
-                  from: "meta_data.seconds",
-                  when: {
-                    equals: ["meta_data.video_type", "pro"]
-                  },
-                  transform: [{
-                    op: "toString"
-                  }, {
-                    op: "default",
-                    value: "15"
-                  }]
-                }, {
-                  to: "input_reference",
-                  from: "control_images",
-                  transform: [{
-                    op: "pick",
-                    index: 0
-                  }, {
-                    op: "toFile"
-                  }]
-                }, {
-                  to: "size",
-                  from: "aspect_ratio",
-                  transform: [{
-                    op: "enumMap",
-                    map: {
-                      "9:16": "720x1280",
-                      "16:9": "1280x720"
-                    },
-                    default: "1280x720"
-                  }]
-                }]
-              },
-              free: {
-                provider: "tuzi",
-                endpoint: "https://api.tu-zi.com/v1/videos",
-                rules: [{
-                  to: "model",
-                  from: "meta_data.video_type",
-                  transform: [{
-                    op: "enumMap",
-                    map: {
-                      standard: "sora-2",
-                      pro: "sora-2-pro"
-                    },
-                    default: "sora-2"
-                  }]
-                }, {
-                  to: "prompt",
-                  from: ["prompt_process", "prompt"],
-                  transform: [{
-                    op: "coalesce"
-                  }]
-                }, {
-                  to: "seconds",
-                  from: "meta_data.seconds",
-                  when: {
-                    equals: ["meta_data.video_type", "pro"]
-                  },
-                  transform: [{
-                    op: "toString"
-                  }, {
-                    op: "default",
-                    value: "15"
-                  }]
-                }, {
-                  to: "input_reference",
-                  from: "control_images",
-                  transform: [{
-                    op: "pick",
-                    index: 0
-                  }, {
-                    op: "toFile"
-                  }]
-                }, {
-                  to: "size",
-                  from: "aspect_ratio",
-                  transform: [{
-                    op: "enumMap",
-                    map: {
-                      "9:16": "720x1280",
-                      "16:9": "1280x720"
-                    },
-                    default: "1280x720"
-                  }]
-                }]
-              },
-              default_completion: {
-                provider: "tuzi",
-                endpoint: "https://asyncdata.net/tran/https://api.tu-zi.com/v1/chat/completions",
-                rules: [{
-                  to: "model",
-                  from: "meta_data.video_type",
-                  transform: [{
-                    op: "enumMap",
-                    map: {
-                      standard: "sora-2",
-                      pro: "sora-2-pro"
-                    },
-                    default: "sora-2"
-                  }]
-                }, {
-                  to: "messages",
-                  from: "raw",
-                  transform: [{
-                    op: "customFn",
-                    fn: "build_messages"
-                  }]
-                }]
-              }
-            },
-            apiInput: "$0:0:model_config:apiInputs:free"
+          id: "sora-2-tuzi",
+          apiInput: "$0:0:model_config:apiInputs:free"
         }
       }];
       
-      const ds = JSON.stringify(pd);
+      console.log("Sending generation request...");
       
-      const res = await this.axiosInstance.post(this.config.endpoint, ds, {
-        headers: this.buildHeader("7f3d38b141c801aaf1ab2783bf1b968689332943ce", "%5B%22%22%2C%7B%22children%22%3A%5B%5B%22locale%22%2C%22en%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%22video%22%2C%7B%22children%22%3A%5B%5B%22casePage%22%2C%22sora%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%2C%22%2Fvideo%2Fsora%22%2C%22refresh%22%5D%7D%5D%7D%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D")
-      });
+      const response = await this.axiosInstance.post(
+        this.config.endpoint, 
+        JSON.stringify(payload), 
+        {
+          headers: this.buildHeader(
+            "7f3d38b141c801aaf1ab2783bf1b968689332943ce", 
+            "%5B%22%22%2C%7B%22children%22%3A%5B%5B%22locale%22%2C%22en%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%22video%22%2C%7B%22children%22%3A%5B%5B%22casePage%22%2C%22sora%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%2C%22%2Fvideo%2Fsora%22%2C%22refresh%22%5D%7D%5D%7D%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D"
+          )
+        }
+      );
       
-      const ps = this.pr(res.data);
-      const tsk = ps?.[1]?.data;
-      if (!tsk) throw new Error("No task ID received in response.");
-      return { task_id: tsk };
-    } catch (e) {
-      throw new Error(`Generation failed: ${e.message}`);
+      console.log("Raw response received:", response.data.substring(0, 500) + "...");
+      
+      const parsedResponse = this.parseResponse(response.data);
+      console.log("Parsed response:", JSON.stringify(parsedResponse, null, 2));
+      
+      // Multiple possible locations for task_id
+      const taskId = 
+        parsedResponse?.[1]?.data || 
+        parsedResponse?.[1]?.task_id ||
+        parsedResponse?.[0]?.data ||
+        parsedResponse?.[2]?.data;
+      
+      if (!taskId) {
+        console.error("No task ID found in response. Full response:", parsedResponse);
+        throw new Error("No task ID received in response. Service may be unavailable or parameters invalid.");
+      }
+      
+      console.log("Task ID obtained:", taskId);
+      return { 
+        status: true, 
+        task_id: taskId,
+        message: "Generation started successfully"
+      };
+      
+    } catch (error) {
+      console.error("Generation error details:", error.response?.data || error.message);
+      throw new Error(`Generation failed: ${error.message}`);
     }
   }
 
   async status({ task_id }) {
     try {
-      const ds = JSON.stringify([task_id]);
-      const res = await this.axiosInstance.post(this.config.endpoint, ds, {
-        headers: this.buildHeader("7f19b44cadf964c6497251f7dbb02e01c93d256a4e", "%5B%22%22%2C%7B%22children%22%3A%5B%5B%22locale%22%2C%22en%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%22video%22%2C%7B%22children%22%3A%5B%5B%22casePage%22%2C%22sora%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%2C%22%2Fvideo%2Fsora%22%2C%22refresh%22%5D%7D%5D%7D%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D")
-      });
+      console.log("Checking status for task:", task_id);
       
-      const ps = this.pr(res.data);
-      const responseData = ps?.[1]?.body || {};
+      const payload = [task_id];
+      const response = await this.axiosInstance.post(
+        this.config.endpoint, 
+        JSON.stringify(payload), 
+        {
+          headers: this.buildHeader(
+            "7f19b44cadf964c6497251f7dbb02e01c93d256a4e", 
+            "%5B%22%22%2C%7B%22children%22%3A%5B%5B%22locale%22%2C%22en%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%22video%22%2C%7B%22children%22%3A%5B%5B%22casePage%22%2C%22sora%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%2C%22%2Fvideo%2Fsora%22%2C%22refresh%22%5D%7D%5D%7D%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D"
+          )
+        }
+      );
       
-      const status = responseData.status === 'succeeded' ? 'completed' : responseData.status || "unknown";
+      const parsedResponse = this.parseResponse(response.data);
+      const responseData = parsedResponse?.[1]?.body || parsedResponse?.[1] || {};
+      
+      console.log("Status response:", JSON.stringify(responseData, null, 2));
+      
+      const status = responseData.status === 'succeeded' ? 'completed' : 
+                    responseData.status === 'failed' ? 'failed' : 
+                    responseData.status || "processing";
 
       return {
         status: status,
-        data: responseData.data || {},
+        data: responseData.data || responseData,
         progress: responseData.progress || 0,
-        httpStatus: ps?.[1]?.httpStatus
+        message: responseData.message || ""
       };
-    } catch (e) {
-      throw new Error(`Status check failed: ${e.message}`);
+      
+    } catch (error) {
+      console.error("Status check error:", error.message);
+      throw new Error(`Status check failed: ${error.message}`);
     }
   }
 }
@@ -370,47 +255,45 @@ class SoraVideo {
 // ===================================
 
 const soraAPI = new SoraVideo();
-
-/**
- * Helper function to pause execution.
- * @param {number} ms - Milliseconds to sleep.
- */
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const router = express.Router();
 
 /**
- * Sora AI Video Generation API
- * مثال:
- *   /api/sora?q=a cat flying in space
- *   /api/sora?q=a sunset on the beach&aspect_ratio=16:9&video_type=pro
+ * Sora AI Video Generation API - IMPROVED
  */
 router.get("/sora", async (req, res) => {
   const { q, aspect_ratio, video_type, seconds, image_url } = req.query;
   const prompt = q || "";
 
-  if (!prompt) {
+  if (!prompt || prompt.trim().length < 3) {
     return res.status(400).json({
       status: false,
-      message: "يرجى إدخال وصف لتوليد الفيديو."
+      message: "يرجى إدخال وصف مفصل لتوليد الفيديو (3 أحرف على الأقل)."
     });
   }
 
   try {
+    console.log(`Received generation request: "${prompt.substring(0, 50)}..."`);
+    
     // 1. Send generation request
     const genResponse = await soraAPI.generate({ 
-      prompt, 
+      prompt: prompt.trim(), 
       imageUrl: image_url,
       aspect_ratio: aspect_ratio || "9:16",
       video_type: video_type || "standard",
       seconds: seconds || "15"
     });
     
+    if (!genResponse.status) {
+      throw new Error(genResponse.message || "Failed to start generation");
+    }
+    
     const task_id = genResponse.task_id;
 
-    // 2. Start polling for result
-    const POLL_INTERVAL = 20000; // 20 seconds
-    const MAX_ATTEMPTS = 30; // 10 minutes max
+    // 2. Start polling for result with improved logic
+    const POLL_INTERVAL = 15000; // 15 seconds
+    const MAX_ATTEMPTS = 40; // 10 minutes max
     let attempts = 0;
 
     while (attempts < MAX_ATTEMPTS) {
@@ -420,15 +303,17 @@ router.get("/sora", async (req, res) => {
       let statusResponse;
       try {
         statusResponse = await soraAPI.status({ task_id });
+        console.log(`Polling attempt ${attempts}:`, statusResponse.status, statusResponse.progress + "%");
       } catch (pollError) {
-        console.error(`Sora status check error for ${task_id}: ${pollError.message}`);
+        console.error(`Status check error for ${task_id}:`, pollError.message);
+        // Continue polling on status errors
         continue;
       }
 
-      const { status, progress, data } = statusResponse;
+      const { status, progress, data, message } = statusResponse;
 
       if (status === 'completed') {
-        const videoUrl = data?.url || data?.video_url;
+        const videoUrl = data?.url || data?.video_url || data?.output?.[0] || data?.result_url;
         
         if (videoUrl) {
           return res.json({
@@ -437,43 +322,51 @@ router.get("/sora", async (req, res) => {
             task_id: task_id,
             video_url: videoUrl,
             prompt: prompt,
-            progress: 100
+            progress: 100,
+            duration: "15-25 seconds"
           });
         } else {
-          throw new Error(`اكتملت المهمة ولكن لم يتم العثور على رابط الفيديو.`);
+          throw new Error("اكتملت المهمة ولكن لم يتم العثور على رابط الفيديو في الاستجابة.");
         }
       } 
       
       else if (status === 'failed') {
-        throw new Error(`فشلت مهمة توليد الفيديو. قد يكون السبب محتوى غير مناسب أو خطأ في الخادم.`);
+        throw new Error(message || "فشلت مهمة توليد الفيديو. قد يكون السبب محتوى غير مناسب أو خطأ في الخادم.");
       } 
       
       else if (status === 'pending' || status === 'processing') {
-        // Continue polling
-        console.log(`Sora task ${task_id} progress: ${progress}%`);
-      } 
+        // Send progress update for long polling
+        if (attempts % 3 === 0) { // Every 45 seconds
+          res.write(JSON.stringify({
+            status: "processing",
+            message: "جاري توليد الفيديو...",
+            task_id: task_id,
+            progress: progress,
+            attempts: attempts
+          }) + "\n");
+        }
+      }
       
       else {
-        console.warn(`Sora: Received unknown status '${status}' for task ${task_id}`);
+        console.warn(`Unknown status '${status}' for task ${task_id}`);
       }
     }
 
-    throw new Error(`انتهى وقت الانتظار (10 دقائق) ولم تكتمل المهمة.`);
+    throw new Error(`انتهى وقت الانتظار (10 دقائق) ولم تكتمل المهمة. حاول مرة أخرى لاحقًا.`);
 
   } catch (err) {
-    console.error("[ERROR] Sora AI:", err.message);
+    console.error("[SORA AI ERROR]:", err.message);
     res.status(500).json({
       status: false,
       message: "حدث خطأ أثناء توليد الفيديو.",
-      error: err.message
+      error: err.message,
+      suggestion: "جرب وصفًا مختلفًا أو انتظر قليلاً ثم حاول مرة أخرى"
     });
   }
 });
 
 /**
- * Sora Status Check Endpoint
- * مثال:
- *   /api/sora/status?task_id=sora-2:task_abc123
+ * Sora Status Check Endpoint - IMPROVED
  */
 router.get("/sora/status", async (req, res) => {
   const { task_id } = req.query;
@@ -492,11 +385,12 @@ router.get("/sora/status", async (req, res) => {
       status: true,
       task_id: task_id,
       generation_status: response.status,
-      progress: response.progress
+      progress: response.progress,
+      message: response.message || ""
     };
 
     if (response.status === 'completed') {
-      const videoUrl = response.data?.url || response.data?.video_url;
+      const videoUrl = response.data?.url || response.data?.video_url || response.data?.output?.[0];
       if (videoUrl) {
         result.video_url = videoUrl;
         result.message = "تم الانتهاء من توليد الفيديو بنجاح!";
@@ -506,7 +400,7 @@ router.get("/sora/status", async (req, res) => {
     res.json(result);
 
   } catch (err) {
-    console.error("[ERROR] Sora Status Check:", err.message);
+    console.error("[SORA STATUS ERROR]:", err.message);
     res.status(500).json({
       status: false,
       message: "حدث خطأ أثناء التحقق من حالة المهمة.",
@@ -519,7 +413,7 @@ module.exports = {
   path: "/api/ai",
   name: "Sora AI Video",
   type: "ai",
-  url: `${global.t}/api/ai/sora?q=a cat flying in space`,
+  url: `${global.baseURL}/api/ai/sora?q=a cat flying in space`,
   logo: "",
   description: "توليد فيديو باستخدام Sora AI من وصف نصي أو صورة مرجعية",
   router
