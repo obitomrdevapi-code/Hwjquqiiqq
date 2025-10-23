@@ -309,7 +309,7 @@ async function scrapeExamsLevels() {
 /**
  * نقطة النهاية الرئيسية - الأقسام الدراسية
  */
-router.get("/sections", async (req, res) => {
+router.get("/moutamadris", async (req, res) => {
     try {
         const sections = getStudySections();
         
@@ -586,7 +586,7 @@ module.exports = {
     path: "/api/search",
     name: "moutamadris search",
     type: "search",
-    url: `${global.t}/api/search/sections`,
+    url: `${global.t}/api/search/moutamadris`,
     logo: "https://qu.ax/obitoajajq.png",
     description: "استخراج الأقسام الدراسية من موقع متمدرس - العطل، الجذاذات، الامتحانات، الدروس",
     router
