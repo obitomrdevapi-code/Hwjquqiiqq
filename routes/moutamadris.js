@@ -584,7 +584,7 @@ router.get("/search", async (req, res) => {
 
 module.exports = {
     path: "/api/search",
-    name: "education scraper",
+    name: "moutamadris search",
     type: "search",
     url: `${global.t}/api/search/sections`,
     logo: "https://qu.ax/obitoajajq.png",
