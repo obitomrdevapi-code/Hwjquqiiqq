@@ -583,10 +583,10 @@ router.get("/search", async (req, res) => {
 });
 
 module.exports = {
-    path: "/api/education",
+    path: "/api/search",
     name: "education scraper",
-    type: "education",
-    url: `${global.t}/api/education/sections`,
+    type: "search",
+    url: `${global.t}/api/search/sections`,
     logo: "https://qu.ax/obitoajajq.png",
     description: "استخراج الأقسام الدراسية من موقع متمدرس - العطل، الجذاذات، الامتحانات، الدروس",
     router
