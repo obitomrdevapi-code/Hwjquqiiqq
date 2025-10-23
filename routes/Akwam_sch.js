@@ -94,7 +94,7 @@ router.get("/akwam", async (req, res) => {
       success: true,
       total: results.length,
       query: searchName,
-      preview: results.slice(0, 10)
+      preview: results.slice(0, 200)
 });
 } catch (err) {
     res.status(500).json({
