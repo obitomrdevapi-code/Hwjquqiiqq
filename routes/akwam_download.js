@@ -1,4 +1,4 @@
-// تست
+// واو
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
@@ -15,22 +15,23 @@ async function extractVideoLink(url) {
 };
 
   try {
+    // الخطوة 1: جلب صفحة الحلقة
     const page1 = await axios.get(url, { headers, timeout: 15000});
     const $ = cheerio.load(page1.data);
 
-    let downloadPage = $("a.download-link").first().attr("href") ||
-                       $('a.link-download').first().attr("href") ||
-                       $('a:contains("تحميل")').first().attr("href") ||
-                       $('a:contains("اضغط هنا")').first().attr("href") ||
-                       $('a:contains("Click here")').first().attr("href");
+    // استخراج رابط صفحة التحميل
+    let intermediateLink = $('a.link-download').attr('href') ||
+                           $('a.download-link').attr('href') ||
+                           $('a:contains("تحميل")').attr('href');
 
-    if (!downloadPage) return null;
+    if (!intermediateLink) return null;
 
     try {
-      downloadPage = new URL(downloadPage, page1.request.res.responseUrl || url).toString();
+      intermediateLink = new URL(intermediateLink, page1.request.res.responseUrl || url).toString();
 } catch {}
 
-    const page2 = await axios.get(downloadPage, { headers, timeout: 15000});
+    // الخطوة 2: جلب صفحة التحميل
+    const page2 = await axios.get(intermediateLink, { headers, timeout: 15000});
     const $$ = cheerio.load(page2.data);
 
     let videoLink = null;
@@ -73,7 +74,7 @@ async function extractVideoLink(url) {
 
     if (videoLink &&!videoLink.startsWith('http')) {
       try {
-        videoLink = new URL(videoLink, page2.request.res.responseUrl || downloadPage).toString();
+        videoLink = new URL(videoLink, page2.request.res.responseUrl || intermediateLink).toString();
 } catch {}
 }
 
@@ -133,8 +134,8 @@ module.exports = {
   path: "/api/download",
   name: "akwam download link",
   type: "download",
-  url: `${global.t}/api/download/akwam_link?url=https://ak.sv/episode/12345`,
+  url: `${global.t}/api/download/akwam_link?url=https://ak.sv/episode/43993`,
   logo: "",
-  description: "استخراج رابط الفيديو النهائي من صفحة أكوام",
+  description: "استخراج رابط الفيديو النهائي من صفحة أكوام بدءًا من رابط الحلقة",
   router
 };
