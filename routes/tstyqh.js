@@ -10,7 +10,7 @@ const activeStreams = new Map();
  * نقطة النهاية لتشغيل البث
  * مثال: /api/stream?key=test&m3u8=https://example.com/stream.m3u8
  */
-router.get("/stream", async (req, res) => {
+router.get("/tetsuq", async (req, res) => {
   const { key, m3u8} = req.query;
 
   if (!key ||!m3u8 ||!m3u8.startsWith("http")) {
@@ -72,7 +72,7 @@ router.get("/stream", async (req, res) => {
  * نقطة لإيقاف البث
  * مثال: /api/stream/stop?key=test
  */
-router.get("/stream/stop", (req, res) => {
+router.get("/tetsuq/stop", (req, res) => {
   const { key} = req.query;
 
   if (!activeStreams.has(key)) {
@@ -94,10 +94,10 @@ router.get("/stream/stop", (req, res) => {
 });
 
 module.exports = {
-  path: "/api/stream",
+  path: "/api/tst",
   name: "stream scraper",
-  type: "streaming",
-  url: `${global.t}/api/stream?key=test&m3u8=https://example.com/stream.m3u8`,
+  type: "tst",
+  url: `${global.t}/api/tst/tetsuq?key=test&m3u8=https://example.com/stream.m3u8`,
   logo: "https://qu.ax/obitoajajq.png",
   description: "تشغيل بث مباشر عبر ffmpeg باستخدام رابط m3u8",
   router
