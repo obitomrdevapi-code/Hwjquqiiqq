@@ -1,116 +1,115 @@
+
 const express = require("express");
 const { spawn} = require("child_process");
 
 const router = express.Router();
-const activeStreams = new Map();
 
-function getRtmpUrl(key) {
-  return `rtmps://live-api-s.facebook.com:443/rtmp/${key}`;
-}
+const userSessions = new Map();
+const streamProcesses = new Map();
+const streamStartTimes = new Map();
+const streamRestartFlags = new Map();
 
-function startStream(key, m3u8, rtmpUrl) {
+function startStream(sessionId, streamName, sourceUrl, rtmpsUrl) {
+  const streamId = `${sessionId}:${streamName}`;
   const ffmpegCmd = [
     "-re",
-    "-i", m3u8,
+    "-i", sourceUrl,
     "-c:v", "copy",
     "-c:a", "aac",
     "-f", "flv",
-    rtmpUrl
+    rtmpsUrl
   ];
 
-  const process = spawn("ffmpeg", ffmpegCmd);
-  activeStreams.set(key, process);
+  try {
+    const process = spawn("ffmpeg", ffmpegCmd);
+    streamProcesses.set(streamId, process);
+    streamStartTimes.set(streamId, Date.now());
+    streamRestartFlags.set(streamId, true);
 
-  process.stdout.on("data", (data) => {
-    console.log(`[${key}] ffmpeg output: ${data.toString()}`);
+    process.stderr.on("data", (data) => {
+      console.log(`[${streamId}] ffmpeg: ${data.toString()}`);
 });
 
-  process.stderr.on("data", (data) => {
-    console.error(`[${key}] ffmpeg error: ${data.toString()}`);
+    process.on("exit", () => {
+      console.log(`⚠️ البث '${streamName}' توقف`);
+      streamProcesses.delete(streamId);
+      streamStartTimes.delete(streamId);
+      streamRestartFlags.delete(streamId);
+      setTimeout(() => {
+        console.log(`🔁 إعادة تشغيل '${streamName}'`);
+        startStream(sessionId, streamName, sourceUrl, rtmpsUrl);
+}, 5000);
 });
 
-  process.on("error", (err) => {
-    console.error(`[${key}] ffmpeg failed: ${err.message}`);
-});
-
-  process.on("exit", (code, signal) => {
-    console.log(`🛑 البث '${key}' توقف (code: ${code}, signal: ${signal})`);
-    activeStreams.delete(key);
-    setTimeout(() => startStream(key, m3u8, rtmpUrl), 5000);
-});
-
-  monitorStream(key, m3u8, rtmpUrl);
+    console.log(`✅ البث '${streamName}' بدأ`);
+} catch (err) {
+    console.error(`❌ خطأ أثناء بدء البث: ${err.message}`);
+}
 }
 
-function monitorStream(key, m3u8, rtmpUrl) {
-  const process = activeStreams.get(key);
-  if (!process) return;
-
-  const interval = setInterval(() => {
-    if (process.exitCode!== null) {
-      clearInterval(interval);
-      console.log(`⚠️ البث '${key}' توقف. إعادة التشغيل...`);
-      startStream(key, m3u8, rtmpUrl);
-}
-}, 10000);
+router.get("/start", (req, res) => {
+  const { session, name, rtmps, source} = req.query;
+  if (!session ||!name ||!rtmps ||!source) {
+    return res.status(400).json({ success: false, message: "بيانات ناقصة"});
 }
 
-router.get("/stream", async (req, res) => {
-  const { key, m3u8} = req.query;
-
-  if (!key ||!m3u8 ||!m3u8.startsWith("http")) {
-    return res.status(400).json({
-      status: 400,
-      success: false,
-      message: "⚠️ يرجى إدخال مفتاح ورابط m3u8 صالح"
-});
+  const streamId = `${session}:${name}`;
+  if (streamProcesses.has(streamId)) {
+    return res.json({ success: true, message: "✅ البث جاري بالفعل"});
 }
 
-  if (activeStreams.has(key)) {
-    return res.status(200).json({
-      status: 200,
-      success: true,
-      message: `✅ البث '${key}' يعمل بالفعل`
+  userSessions.set(session, { streamName: name, rtmps, source});
+  startStream(session, name, source, rtmps);
+  res.json({ success: true, message: `🚀 تم بدء البث '${name}'`});
 });
+
+router.get("/stop", (req, res) => {
+  const { session, name} = req.query;
+  const streamId = `${session}:${name}`;
+  const proc = streamProcesses.get(streamId);
+  if (!proc) {
+    return res.status(404).json({ success: false, message: "لا يوجد بث بهذا الاسم"});
 }
-
-  const rtmpUrl = getRtmpUrl(key);
-  startStream(key, m3u8, rtmpUrl);
-
-  res.json({
-    status: 200,
-    success: true,
-    message: `🚀 تم بدء البث '${key}' بنجاح إلى ${rtmpUrl}`
-});
+  proc.kill("SIGTERM");
+  streamProcesses.delete(streamId);
+  streamStartTimes.delete(streamId);
+  streamRestartFlags.delete(streamId);
+  res.json({ success: true, message: `🛑 تم إيقاف البث '${name}'`});
 });
 
-router.get("/stream/stop", (req, res) => {
-  const { key} = req.query;
-
-  if (!activeStreams.has(key)) {
-    return res.status(404).json({
-      status: 404,
-      success: false,
-      message: "⚠️ لا يوجد بث بهذا المفتاح"
-});
+router.get("/duration", (req, res) => {
+  const { session, name} = req.query;
+  const streamId = `${session}:${name}`;
+  const startTime = streamStartTimes.get(streamId);
+  if (!startTime) {
+    return res.status(404).json({ success: false, message: "لا يوجد بث بهذا الاسم"});
 }
-
-  activeStreams.get(key).kill("SIGTERM");
-  activeStreams.delete(key);
-
-  res.json({
-    status: 200,
-    success: true,
-    message: `🛑 تم إيقاف البث '${key}'`
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+  res.json({ success: true, message: `⏱️ مدة البث: ${minutes} دقيقة و ${seconds} ثانية`});
 });
+
+router.get("/list", (req, res) => {
+  const { session} = req.query;
+  const active = [];
+  for (const [key, proc] of streamProcesses.entries()) {
+    if (key.startsWith(`${session}:`) && proc) {
+      active.push(key.split(":")[1]);
+}
+}
+  if (active.length === 0) {
+    return res.json({ success: true, message: "📭 لا يوجد أي بث نشط حاليًا"});
+}
+  res.json({ success: true, streams: active});
 });
 
 module.exports = {
-  path: "/api/qwertyuio",
-  name: "stream scraper",
-  type: "qwertyuio",
-  url: `${global.t}/api/qwertyuio/stream?key=FB-xxxx&m3u8=https://example.com/stream.m3u8`,
+  path: "/api/live",
+  name: "ffmpeg stream",
+  type: "live",
+  url: `${global.t}/api/live/start?session=123&name=test&rtmps=rtmps://...&source=https://...`,
   logo: "https://qu.ax/obitoajajq.png",
-  description: "تشغيل بث مباشر عبر ffmpeg باستخدام رابط m3u8",
+  description: "تشغيل بث مباشر بنفس منطق البايثون",
   router
 };
