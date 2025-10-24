@@ -4,9 +4,55 @@ const { spawn} = require("child_process");
 const router = express.Router();
 const activeStreams = new Map();
 
-// ✅ رابط RTMP الحقيقي (غيّره حسب المنصة)
 function getRtmpUrl(key) {
   return `rtmps://live-api-s.facebook.com:443/rtmp/${key}`;
+}
+
+function startStream(key, m3u8, rtmpUrl) {
+  const ffmpegCmd = [
+    "-re",
+    "-i", m3u8,
+    "-c:v", "copy",
+    "-c:a", "aac",
+    "-f", "flv",
+    rtmpUrl
+  ];
+
+  const process = spawn("ffmpeg", ffmpegCmd);
+  activeStreams.set(key, process);
+
+  process.stdout.on("data", (data) => {
+    console.log(`[${key}] ffmpeg output: ${data.toString()}`);
+});
+
+  process.stderr.on("data", (data) => {
+    console.error(`[${key}] ffmpeg error: ${data.toString()}`);
+});
+
+  process.on("error", (err) => {
+    console.error(`[${key}] ffmpeg failed: ${err.message}`);
+});
+
+  process.on("exit", (code, signal) => {
+    console.log(`🛑 البث '${key}' توقف (code: ${code}, signal: ${signal})`);
+    activeStreams.delete(key);
+    setTimeout(() => startStream(key, m3u8, rtmpUrl), 5000);
+});
+
+  monitorStream(key, m3u8, rtmpUrl);
+}
+
+function monitorStream(key, m3u8, rtmpUrl) {
+  const process = activeStreams.get(key);
+  if (!process) return;
+
+  const interval = setInterval(() => {
+    if (process.exitCode!== null) {
+      clearInterval(interval);
+      console.log(`⚠️ البث '${key}' توقف. إعادة التشغيل...`);
+      startStream(key, m3u8, rtmpUrl);
+}
+}, 10000);
 }
 
 router.get("/stream", async (req, res) => {
@@ -29,46 +75,13 @@ router.get("/stream", async (req, res) => {
 }
 
   const rtmpUrl = getRtmpUrl(key);
-  const ffmpegCmd = [
-    "-re",
-    "-i", m3u8,
-    "-c:v", "copy",
-    "-c:a", "aac",
-    "-f", "flv",
-    rtmpUrl
-  ];
+  startStream(key, m3u8, rtmpUrl);
 
-  try {
-    const process = spawn("ffmpeg", ffmpegCmd);
-
-    activeStreams.set(key, process);
-
-    process.stderr.on("data", (data) => {
-      console.log(`[${key}] ffmpeg log: ${data.toString()}`);
+  res.json({
+    status: 200,
+    success: true,
+    message: `🚀 تم بدء البث '${key}' بنجاح إلى ${rtmpUrl}`
 });
-
-    process.on("error", (err) => {
-      console.error(`[${key}] ffmpeg error: ${err.message}`);
-});
-
-    process.on("exit", (code, signal) => {
-      console.log(`🛑 البث '${key}' توقف (code: ${code}, signal: ${signal})`);
-      activeStreams.delete(key);
-});
-
-    res.json({
-      status: 200,
-      success: true,
-      message: `🚀 تم بدء البث '${key}' بنجاح إلى ${rtmpUrl}`
-});
-} catch (err) {
-    res.status(500).json({
-      status: 500,
-      success: false,
-      message: "❌ خطأ أثناء تشغيل ffmpeg",
-      error: err.message
-});
-}
 });
 
 router.get("/stream/stop", (req, res) => {
@@ -93,10 +106,10 @@ router.get("/stream/stop", (req, res) => {
 });
 
 module.exports = {
-  path: "/api/tqhqb",
+  path: "/api/qwertyuio",
   name: "stream scraper",
-  type: "tqhqb",
-  url: `${global.t}/api/tqhqb/stream?key=FB-xxxx&m3u8=https://example.com/stream.m3u8`,
+  type: "qwertyuio",
+  url: `${global.t}/api/qwertyuio/stream?key=FB-xxxx&m3u8=https://example.com/stream.m3u8`,
   logo: "https://qu.ax/obitoajajq.png",
   description: "تشغيل بث مباشر عبر ffmpeg باستخدام رابط m3u8",
   router
