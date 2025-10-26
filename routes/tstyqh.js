@@ -1,173 +1,101 @@
-// بسم الله الرحمن الرحيم ✨
-// Facebook Live Stream API
-// إطلاق بث مباشر على فيسبوك باستخدام مفتاح البث ورابط m3u8
-
 const express = require("express");
-const { spawn } = require('child_process');
+const axios = require("axios");
+const cheerio = require("cheerio");
 
 const router = express.Router();
+const BASE_URL = "https://yallasms.com/country/";
 
+/**
+ * جلب قائمة الدول من موقع YallaSMS
+ * @returns {Promise<object>}
+ */
+async function fetchCountries() {
+  try {
+    const response = await axios.get(BASE_URL, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "ar,en;q=0.5"
+      }
+    });
 
-const activeStreams = new Map();
+    const html = response.data;
+    const $ = cheerio.load(html);
+    const results = [];
 
-
-async function startLiveStream(key, m3u8) {
-  return new Promise((resolve, reject) => {
-    const rtmps = `rtmps://live-api-s.facebook.com:443/rtmp/${key}`;
+    // استخراج البيانات من الـ script في الصفحة
+    const scripts = $('script');
     
-    const args = [
-      '-reconnect', '1',
-      '-reconnect_streamed', '1',
-      '-reconnect_delay_max', '300',
-      '-rw_timeout', '30000000',
-      '-timeout', '30000000',
-      '-i', m3u8,
-      '-c:v', 'copy',
-      '-c:a', 'aac',
-      '-b:a', '128k',
-      '-ar', '44100',
-      '-ac', '2',
-      '-f', 'flv',
-      rtmps
-    ];
-
-    try {
-      const ffmpeg = spawn('ffmpeg', args);
-      const streamId = Date.now().toString();
-      
-      const streamInfo = {
-        id: streamId,
-        key: key,
-        m3u8: m3u8,
-        rtmps: rtmps,
-        process: ffmpeg,
-        startTime: new Date(),
-        status: 'running'
-      };
-
-
-      activeStreams.set(streamId, streamInfo);
-
-      let output = '';
-      
-      ffmpeg.stderr.on('data', (data) => {
-        const line = data.toString();
-        output += line;
-        
-
-        if (line.includes('frame=') && line.includes('fps=')) {
-          resolve({
-            success: true,
-            streamId: streamId,
-            message: "✅ تم إطلاق البث المباشر بنجاح",
-            info: {
-              streamId: streamId,
-              key: key,
-              m3u8: m3u8,
-              rtmps: rtmps,
-              startTime: streamInfo.startTime,
-              status: 'live',
-              platform: 'facebook'
+    scripts.each((index, script) => {
+      const scriptContent = $(script).html();
+      if (scriptContent && scriptContent.includes('const countries = [')) {
+        const match = scriptContent.match(/const countries\s*=\s*(\[.*?\]);/s);
+        if (match && match[1]) {
+          try {
+            // تحويل البيانات إلى مصفوفة JavaScript
+            const countriesData = eval(match[1]);
+            
+            if (Array.isArray(countriesData)) {
+              countriesData.forEach(country => {
+                if (country.name && country.code) {
+                  results.push({
+                    name: country.name,
+                    code: country.code,
+                    flag: country.flag,
+                    url: country.url
+                  });
+                }
+              });
             }
-          });
+          } catch (evalError) {
+            console.error("[ERROR] في تحليل بيانات الدول:", evalError.message);
+            throw new Error("فشل في تحليل بيانات الدول من الموقع");
+          }
         }
-      });
+      }
+    });
 
-      ffmpeg.on('close', (code) => {
-        const stream = activeStreams.get(streamId);
-        if (stream) {
-          stream.status = 'closed';
-          stream.endTime = new Date();
-        }
-        
-        if (code !== 0 && !output.includes('frame=')) {
-          reject(new Error("❌ فشل في إطلاق البث - تحقق من الرابط أو المفتاح"));
-        }
-      });
-
-      ffmpeg.on('error', (error) => {
-        reject(error);
-      });
-
-
-      setTimeout(() => {
-        if (!output.includes('frame=')) {
-          reject(new Error("⏰ انتهى وقت الانتظار لبدء البث"));
-        }
-      }, 10000);
-
-    } catch (error) {
-      reject(error);
+    if (results.length === 0) {
+      throw new Error("لم يتم العثور على بيانات الدول في الصفحة");
     }
-  });
+
+    return { status: true, data: results };
+  } catch (err) {
+    console.error("[ERROR] أثناء جلب الدول:", err.message);
+    return { status: false, message: "فشل في جلب قائمة الدول من الموقع." };
+  }
 }
 
+/**
+ * نقطة النهاية الرئيسية
+ * مثال:
+ *   /api/countries/list
+ */
+router.get("/country_number_fek", async (req, res) => {
+  const result = await fetchCountries();
 
-router.get("/live", async (req, res) => {
-  const { key, m3u8 } = req.query;
-
-  if (!key || !m3u8) {
-    return res.status(400).json({
-      status: 400,
-      success: false,
-      message: "⚠️ يرجى إدخال مفتاح البث ورابط m3u8",
-      usage: "/api/facebook/live?key=مفتاح_البث&m3u8=رابط_m3u8"
-    });
-  }
-
-  try {
-    const result = await startLiveStream(key, m3u8);
-    
-    res.json({
-      status: 200,
-      success: true,
-      message: "🚀 تم إطلاق البث المباشر بنجاح!",
-      data: result.info,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (err) {
-    res.status(500).json({
+  if (!result.status) {
+    return res.status(500).json({
       status: 500,
       success: false,
-      message: "❌ فشل في إطلاق البث المباشر",
-      error: err.message,
-      timestamp: new Date().toISOString()
+      message: result.message
     });
   }
-});
-
-
-router.get("/streams", (req, res) => {
-  const streams = [];
-  
-  activeStreams.forEach((stream, id) => {
-    streams.push({
-      id: stream.id,
-      key: stream.key,
-      m3u8: stream.m3u8,
-      status: stream.status,
-      startTime: stream.startTime,
-      endTime: stream.endTime || null,
-      platform: 'facebook'
-    });
-  });
 
   res.json({
     status: 200,
     success: true,
-    total: streams.length,
-    active: streams.filter(s => s.status === 'running').length,
-    streams: streams
+    count: result.data.length,
+    data: result.data
   });
 });
 
 module.exports = {
-  path: "/api/facebook",
-  name: "facebook live stream",
-  type: "facebook",
-  url: `${global.t}/api/facebook/live?key=FB-123abc&m3u8=https://example.com/live.m3u8`,
+  path: "/api/tools",
+  name: "country number fek",
+  type: "tools",
+  url: `${global.t}/api/tools/country_number_fek`,
   logo: "",
-  description: "إطلاق بث مباشر على فيسبوك باستخدام مفتاح البث ورابط m3u8",
+  description: "جلب دول المتوفره للأرقام الوهميه",
   router
 };
