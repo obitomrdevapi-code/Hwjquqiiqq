@@ -97,7 +97,7 @@ router.get("/aydit_yt", async (req, res) => {
 module.exports = {
   path: "/api/anime",
   name: "aydit anime 2 yt",
-  type: "ainme",
+  type: "anime",
   url: `${global.t}/api/anime/aydit_yt?txt=ناروتو`,
   logo: "https://qu.ax/obitoajajq.png",
   description: "جلب ايديات انمي من يوتيوب",
