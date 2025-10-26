@@ -1,101 +1,95 @@
+// بسم الله الرحمن الرحيم ✨
+// Anime Search Scraper API
+// البحث عن الأنمي عبر TikTok API
+
 const express = require("express");
 const axios = require("axios");
-const cheerio = require("cheerio");
+const FormData = require("form-data");
 
 const router = express.Router();
-const BASE_URL = "https://yallasms.com/country/";
 
 /**
- * جلب قائمة الدول من موقع YallaSMS
- * @returns {Promise<object>}
+ * البحث عن الأنمي عبر TikTok API (نفس الكود الأصلي)
+ * @param {string} query - كلمة البحث
+ * @param {number} count - عدد النتائج
+ * @returns {Promise<Array>}
  */
-async function fetchCountries() {
-  try {
-    const response = await axios.get(BASE_URL, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "ar,en;q=0.5"
-      }
-    });
+const ttSearch = async (query, count = 10) => {
+    try {
+        let d = new FormData();
+        d.append("keywords", query);
+        d.append("count", count);
+        d.append("cursor", 0);
+        d.append("web", 1);
+        d.append("hd", 1);
 
-    const html = response.data;
-    const $ = cheerio.load(html);
-    const results = [];
+        let h = { headers: { ...d.getHeaders() } };
+        let { data } = await axios.post("https://tikwm.com/api/feed/search", d, h);
 
-    // استخراج البيانات من الـ script في الصفحة
-    const scripts = $('script');
-    
-    scripts.each((index, script) => {
-      const scriptContent = $(script).html();
-      if (scriptContent && scriptContent.includes('const countries = [')) {
-        const match = scriptContent.match(/const countries\s*=\s*(\[.*?\]);/s);
-        if (match && match[1]) {
-          try {
-            // تحويل البيانات إلى مصفوفة JavaScript
-            const countriesData = eval(match[1]);
-            
-            if (Array.isArray(countriesData)) {
-              countriesData.forEach(country => {
-                if (country.name && country.code) {
-                  results.push({
-                    name: country.name,
-                    code: country.code,
-                    flag: country.flag,
-                    url: country.url
-                  });
-                }
-              });
-            }
-          } catch (evalError) {
-            console.error("[ERROR] في تحليل بيانات الدول:", evalError.message);
-            throw new Error("فشل في تحليل بيانات الدول من الموقع");
-          }
-        }
-      }
-    });
-
-    if (results.length === 0) {
-      throw new Error("لم يتم العثور على بيانات الدول في الصفحة");
+        if (!data.data || !data.data.videos) return [];
+        
+        const baseURL = "https://tikwm.com";
+        return data.data.videos.map(video => ({
+            title: video.title || "بدون عنوان",
+            play: baseURL + video.play
+        }));
+    } catch (e) {
+        console.log(e);
+        return [];
     }
-
-    return { status: true, data: results };
-  } catch (err) {
-    console.error("[ERROR] أثناء جلب الدول:", err.message);
-    return { status: false, message: "فشل في جلب قائمة الدول من الموقع." };
-  }
 }
 
 /**
- * نقطة النهاية الرئيسية
+ * نقطة النهاية الرئيسية للبحث عن الأنمي
  * مثال:
- *   /api/countries/list
+ *   /api/anime/search?txt=naruto
  */
-router.get("/country_number_fek", async (req, res) => {
-  const result = await fetchCountries();
+router.get("/aydit", async (req, res) => {
+    const searchText = req.query.txt;
+    
+    if (!searchText) {
+        return res.status(400).json({
+            status: 400,
+            success: false,
+            message: "⚠️ يرجى إدخال نص للبحث"
+        });
+    }
 
-  if (!result.status) {
-    return res.status(500).json({
-      status: 500,
-      success: false,
-      message: result.message
-    });
-  }
+    try {
+        let searchResults = await ttSearch(searchText, 10);
 
-  res.json({
-    status: 200,
-    success: true,
-    count: result.data.length,
-    data: result.data
-  });
+        if (searchResults.length === 0) {
+            return res.status(404).json({
+                status: 404,
+                success: false,
+                message: "🚫 لم يتم العثور على نتائج"
+            });
+        }
+
+        res.json({
+            status: 200,
+            success: true,
+            query: searchText,
+            count: searchResults.length,
+            results: searchResults
+        });
+        
+    } catch (err) {
+        res.status(500).json({
+            status: 500,
+            success: false,
+            message: "حدث خطأ أثناء البحث",
+            error: err.message
+        });
+    }
 });
 
 module.exports = {
-  path: "/api/tools",
-  name: "country number fek",
-  type: "tools",
-  url: `${global.t}/api/tools/country_number_fek`,
-  logo: "",
-  description: "جلب دول المتوفره للأرقام الوهميه",
+  path: "/api/anime",
+  name: "aydit anime",
+  type: "anime",
+  url: `${global.t}/api/anime/aydit?txt=ناروتو`,
+  logo: "https://qu.ax/obitoajajq.png",
+  description: "البحث عن ايديت الانميات",
   router
 };
