@@ -1,4 +1,4 @@
-```js
+
 // بسم الله الرحمن الرحيم ✨
 // Facebook Live Stream API
 // إطلاق بث مباشر باستخدام ffmpeg
@@ -99,4 +99,3 @@ module.exports = {
   description: "اطلاق بثوث",
   router
 };
-```
