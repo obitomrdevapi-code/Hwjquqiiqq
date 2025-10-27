@@ -1,3 +1,8 @@
+```js
+// بسم الله الرحمن الرحيم ✨
+// Facebook Live Stream API
+// إطلاق بث مباشر باستخدام ffmpeg
+
 const express = require("express");
 const { spawn} = require("child_process");
 
@@ -66,11 +71,6 @@ async function launchStream(sender, key, url) {
 });
 }
 
-/**
- * نقطة النهاية الرئيسية
- * POST /api/stream/facebook
- * body: { sender, key, url}
- */
 router.post("/facebook", async (req, res) => {
   const { sender, key, url} = req.body;
 
@@ -92,11 +92,11 @@ router.post("/facebook", async (req, res) => {
 
 module.exports = {
   path: "/api/tools",
-  name: "facebook live",
+  name: "facebook",
   type: "tools",
   url: `${global.t}/api/tools/facebook`,
   logo: "https://qu.ax/obitoajajq.png",
-  description: "تست",
+  description: "اطلاق بثوث",
   router
 };
-
+```
