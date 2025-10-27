@@ -1,8 +1,4 @@
 
-// بسم الله الرحمن الرحيم ✨
-// Facebook Live Scraper API
-// إطلاق بث مباشر باستخدام ffmpeg عبر GET
-
 const express = require("express");
 const { spawn} = require("child_process");
 
@@ -10,14 +6,19 @@ const router = express.Router();
 const userStreams = {};
 
 /**
- * إطلاق بث مباشر
- * @param {string} sender - معرف المستخدم
- * @param {string} key - مفتاح البث
- * @param {string} url - رابط m3u8
- * @param {function} log - دالة تسجيل
- * @returns {void}
+ * إطلاق بث مباشر فعلي
  */
-function launchStream(sender, key, url, log) {
+router.get("/facebook", async (req, res) => {
+  const { sender, key, url} = req.query;
+
+  if (!sender ||!key ||!url) {
+    return res.status(400).json({
+      status: 400,
+      success: false,
+      message: "⚠️ يرجى إدخال جميع البيانات المطلوبة: sender, key, url"
+});
+}
+
   const rtmps = `rtmps://live-api-s.facebook.com:443/rtmp/${key}`;
   const args = [
     '-re',
@@ -36,55 +37,60 @@ function launchStream(sender, key, url, log) {
     rtmps
   ];
 
-  const ffmpeg = spawn('ffmpeg', args);
+  try {
+    const ffmpeg = spawn('ffmpeg', args);
 
-  if (!userStreams[sender]) userStreams[sender] = {};
-  userStreams[sender][key] = ffmpeg;
+    if (!userStreams[sender]) userStreams[sender] = {};
+    userStreams[sender][key] = ffmpeg;
 
-  ffmpeg.stderr.on('data', data => {
-    const line = data.toString();
-    if (line.toLowerCase().includes("error") || line.toLowerCase().includes("failed")) {
-      log({ status: 500, success: false, message: "❌ خطأ في ffmpeg", error: line});
-}
-});
+    let responded = false;
 
-  ffmpeg.on('close', code => {
-    delete userStreams[sender][key];
-    if (code === 0) {
-      log({ status: 200, success: true, message: "✅ تم إنهاء البث بنجاح."});
-} else {
-      log({ status: 500, success: false, message: "⚠️ تم إيقاف البث أو حدث خطأ غير متوقع."});
-}
-});
-
-  log({
-    status: 200,
-    success: true,
-    message: "🚀 تم إطلاق البث المباشر بنجاح!",
-    rtmps,
-    source: url
+    ffmpeg.stderr.on('data', data => {
+      const line = data.toString();
+      if (!responded && line.toLowerCase().includes("frame=")) {
+        responded = true;
+        res.json({
+          status: 200,
+          success: true,
+          message: "🚀 تم إطلاق البث المباشر بنجاح!",
+          rtmps,
+          source: url
 });
 }
 
-/**
- * نقطة النهاية الرئيسية
- * مثال:
- *   /api/tools/facebook?sender=123&key=FB-abc123&url=https://server.com/live.m3u8
- */
-router.get("/facebook", async (req, res) => {
-  const { sender, key, url} = req.query;
+      if (line.toLowerCase().includes("error") || line.toLowerCase().includes("failed")) {
+        if (!responded) {
+          responded = true;
+          res.status(500).json({
+            status: 500,
+            success: false,
+            message: "❌ خطأ في ffmpeg",
+            error: line
+});
+}
+}
+});
 
-  if (!sender ||!key ||!url) {
-    return res.status(400).json({
-      status: 400,
+    ffmpeg.on('close', code => {
+      delete userStreams[sender][key];
+      if (!responded) {
+        responded = true;
+        res.status(500).json({
+          status: 500,
+          success: false,
+          message: "⚠️ تم إيقاف البث أو حدث خطأ غير متوقع."
+});
+}
+});
+
+} catch (err) {
+    res.status(500).json({
+      status: 500,
       success: false,
-      message: "⚠️ يرجى إدخال جميع البيانات المطلوبة: sender, key, url"
+      message: "❌ خطأ أثناء تشغيل ffmpeg",
+      error: err.message
 });
 }
-
-  launchStream(sender, key, url, result => {
-    if (!res.headersSent) res.json(result);
-});
 });
 
 module.exports = {
@@ -93,6 +99,6 @@ module.exports = {
   type: "tools",
   url: `${global.t}/api/tools/facebook?sender=123&key=FB-abc123&url=https://server.com/live.m3u8`,
   logo: "https://qu.ax/obitoajajq.png",
-  description: "اطلاق بثوث تست",
+  description: "اطلاق بثوث 0",
   router
 };
