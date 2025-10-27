@@ -1,7 +1,7 @@
-
+// اوبيتو عم
 // بسم الله الرحمن الرحيم ✨
-// Facebook Live Stream API
-// إطلاق بث مباشر باستخدام ffmpeg
+// Facebook Live Scraper API
+// إطلاق بث مباشر باستخدام ffmpeg عبر GET
 
 const express = require("express");
 const { spawn} = require("child_process");
@@ -71,8 +71,13 @@ async function launchStream(sender, key, url) {
 });
 }
 
-router.post("/facebook", async (req, res) => {
-  const { sender, key, url} = req.body;
+/**
+ * نقطة النهاية الرئيسية
+ * مثال:
+ *   /api/tools/facebook?sender=123&key=FB-abc123&url=https://server.com/live.m3u8
+ */
+router.get("/facebook", async (req, res) => {
+  const { sender, key, url} = req.query;
 
   if (!sender ||!key ||!url) {
     return res.status(400).json({
@@ -94,7 +99,7 @@ module.exports = {
   path: "/api/tools",
   name: "facebook",
   type: "tools",
-  url: `${global.t}/api/tools/facebook`,
+  url: `${global.t}/api/tools/facebook?sender=123&key=FB-abc123&url=https://server.com/live.m3u8`,
   logo: "https://qu.ax/obitoajajq.png",
   description: "اطلاق بثوث",
   router
