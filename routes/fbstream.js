@@ -14,9 +14,10 @@ const userStreams = {};
  * @param {string} sender - معرف المستخدم
  * @param {string} key - مفتاح البث
  * @param {string} url - رابط m3u8
- * @returns {Promise<object>}
+ * @param {function} log - دالة تسجيل
+ * @returns {void}
  */
-async function launchStream(sender, key, url) {
+function launchStream(sender, key, url, log) {
   const rtmps = `rtmps://live-api-s.facebook.com:443/rtmp/${key}`;
   const args = [
     '-re',
@@ -35,39 +36,33 @@ async function launchStream(sender, key, url) {
     rtmps
   ];
 
-  return new Promise((resolve, reject) => {
-    try {
-      const ffmpeg = spawn('ffmpeg', args);
+  const ffmpeg = spawn('ffmpeg', args);
 
-      if (!userStreams[sender]) userStreams[sender] = {};
-      userStreams[sender][key] = ffmpeg;
+  if (!userStreams[sender]) userStreams[sender] = {};
+  userStreams[sender][key] = ffmpeg;
 
-      ffmpeg.stderr.on('data', data => {
-        const line = data.toString();
-        if (line.toLowerCase().includes("error") || line.toLowerCase().includes("failed")) {
-          reject({ success: false, message: "❌ خطأ في ffmpeg", error: line});
+  ffmpeg.stderr.on('data', data => {
+    const line = data.toString();
+    if (line.toLowerCase().includes("error") || line.toLowerCase().includes("failed")) {
+      log({ status: 500, success: false, message: "❌ خطأ في ffmpeg", error: line});
 }
 });
 
-      ffmpeg.on('close', code => {
-        delete userStreams[sender][key];
-        if (code === 0) {
-          resolve({ success: true, message: "✅ تم إنهاء البث بنجاح."});
+  ffmpeg.on('close', code => {
+    delete userStreams[sender][key];
+    if (code === 0) {
+      log({ status: 200, success: true, message: "✅ تم إنهاء البث بنجاح."});
 } else {
-          reject({ success: false, message: "⚠️ تم إيقاف البث أو حدث خطأ غير متوقع."});
+      log({ status: 500, success: false, message: "⚠️ تم إيقاف البث أو حدث خطأ غير متوقع."});
 }
 });
 
-      resolve({
-        success: true,
-        message: "🚀 تم إطلاق البث المباشر بنجاح!",
-        rtmps,
-        source: url
-});
-
-} catch (err) {
-      reject({ success: false, message: "❌ خطأ أثناء تشغيل ffmpeg", error: err.message});
-}
+  log({
+    status: 200,
+    success: true,
+    message: "🚀 تم إطلاق البث المباشر بنجاح!",
+    rtmps,
+    source: url
 });
 }
 
@@ -87,12 +82,9 @@ router.get("/facebook", async (req, res) => {
 });
 }
 
-  try {
-    const result = await launchStream(sender, key, url);
-    res.json({ status: 200,...result});
-} catch (err) {
-    res.status(500).json({ status: 500,...err});
-}
+  launchStream(sender, key, url, result => {
+    if (!res.headersSent) res.json(result);
+});
 });
 
 module.exports = {
@@ -101,6 +93,6 @@ module.exports = {
   type: "tools",
   url: `${global.t}/api/tools/facebook?sender=123&key=FB-abc123&url=https://server.com/live.m3u8`,
   logo: "https://qu.ax/obitoajajq.png",
-  description: "اطلاق بثوث",
+  description: "اطلاق بثوث تست",
   router
 };
