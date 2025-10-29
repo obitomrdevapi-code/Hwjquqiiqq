@@ -26,7 +26,7 @@ async function fetchAccountInfo(uid) {
  * مثال:
  *   /api/freefire/info?id=123456789
  */
-router.get("/info", async (req, res) => {
+router.get("/freefire", async (req, res) => {
   const uid = req.query.id;
   if (!uid) {
     return res.status(400).json({
