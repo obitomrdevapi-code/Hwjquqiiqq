@@ -91,6 +91,34 @@
             margin: 0 auto;
         }
 
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 0.8rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .nav-tab:hover,
+        .nav-tab.active {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
         /* Main Content */
         .main-content {
             padding: 2rem 0 4rem;
@@ -199,6 +227,164 @@
             background: linear-gradient(to right, var(--primary-dark), var(--primary));
             transform: translateY(-2px);
             box-shadow: 0 6px 8px rgba(37, 99, 235, 0.4);
+        }
+
+        /* APIs Grid */
+        .apis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .api-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .api-card:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+        }
+
+        .api-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 20px -5px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .api-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .api-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(37, 99, 235, 0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .api-info {
+            flex: 1;
+        }
+
+        .api-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            color: var(--text);
+        }
+
+        .api-type {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            background: rgba(37, 99, 235, 0.2);
+            color: var(--primary-light);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .api-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .api-endpoint {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .endpoint-url {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--success);
+            word-break: break-all;
+        }
+
+        .api-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: space-between;
+        }
+
+        .api-btn {
+            flex: 1;
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .btn-test {
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-test:hover {
+            background: linear-gradient(to right, var(--primary-dark), var(--primary));
+            transform: translateY(-2px);
+        }
+
+        .btn-copy {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-copy:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .api-status {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .status-inactive {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
         }
 
         /* Features Section */
@@ -312,13 +498,29 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .logo-text {
                 font-size: 1.8rem;
             }
             
-            .categories-grid {
+            .categories-grid,
+            .apis-grid {
                 grid-template-columns: 1fr;
             }
             
@@ -328,6 +530,20 @@
             
             .features-grid {
                 grid-template-columns: 1fr;
+            }
+            
+            .api-actions {
+                flex-direction: column;
+            }
+            
+            .nav-tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .nav-tab {
+                width: 100%;
+                text-align: center;
             }
         }
     </style>
@@ -342,69 +558,97 @@
                 <h1 class="logo-text">OBITO APIS</h1>
             </div>
             <p class="tagline">منصة واجهات برمجة التطبيقات المتطورة والآمنة لتطوير تطبيقاتك بسهولة وكفاءة</p>
+            
+            <div class="nav-tabs">
+                <a href="#" class="nav-tab active" data-tab="categories">الفئات</a>
+                <a href="#" class="nav-tab" data-tab="all-apis">جميع الواجهات</a>
+                <a href="#" class="nav-tab" data-tab="features">المميزات</a>
+            </div>
         </header>
 
         <main class="main-content">
-            <section class="api-categories">
-                <div class="section-title">
-                    <h2>فئات واجهات البرمجة</h2>
-                </div>
-                
-                <div class="categories-grid" id="categories-container">
-                    <div class="loading">
-                        <div class="loading-spinner"></div>
-                        <p>جاري تحميل الفئات...</p>
+            <!-- Tab: Categories -->
+            <div id="categories" class="tab-content active">
+                <section class="api-categories">
+                    <div class="section-title">
+                        <h2>فئات واجهات البرمجة</h2>
                     </div>
-                </div>
-            </section>
+                    
+                    <div class="categories-grid" id="categories-container">
+                        <div class="loading">
+                            <div class="loading-spinner"></div>
+                            <p>جاري تحميل الفئات...</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
 
-            <section class="features">
-                <div class="section-title">
-                    <h2>مميزات OBITO APIS</h2>
-                </div>
-                
-                <div class="features-grid">
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="fas fa-bolt"></i>
-                        </div>
-                        <div class="feature-content">
-                            <h3>أداء فائق السرعة</h3>
-                            <p>واجهات برمجة سريعة الاستجابة مع زمن وصول أقل من 100 مللي ثانية</p>
-                        </div>
+            <!-- Tab: All APIs -->
+            <div id="all-apis" class="tab-content">
+                <section class="all-apis">
+                    <div class="section-title">
+                        <h2>جميع واجهات البرمجة المتاحة</h2>
                     </div>
                     
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="fas fa-shield-alt"></i>
+                    <div class="apis-grid" id="apis-container">
+                        <div class="loading">
+                            <div class="loading-spinner"></div>
+                            <p>جاري تحميل واجهات البرمجة...</p>
                         </div>
-                        <div class="feature-content">
-                            <h3>حماية وأمان متقدم</h3>
-                            <p>نظام أمان متعدد الطبقات لحماية بياناتك وتطبيقاتك</p>
-                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Tab: Features -->
+            <div id="features" class="tab-content">
+                <section class="features">
+                    <div class="section-title">
+                        <h2>مميزات OBITO APIS</h2>
                     </div>
                     
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="fas fa-sync-alt"></i>
+                    <div class="features-grid">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h3>أداء فائق السرعة</h3>
+                                <p>واجهات برمجة سريعة الاستجابة مع زمن وصول أقل من 100 مللي ثانية</p>
+                            </div>
                         </div>
-                        <div class="feature-content">
-                            <h3>تحديثات مستمرة</h3>
-                            <p>نقوم بتحديث وتحسين واجهات البرمجة باستمرار لتقديم أفضل تجربة</p>
+                        
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h3>حماية وأمان متقدم</h3>
+                                <p>نظام أمان متعدد الطبقات لحماية بياناتك وتطبيقاتك</p>
+                            </div>
+                        </div>
+                        
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-sync-alt"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h3>تحديثات مستمرة</h3>
+                                <p>نقوم بتحديث وتحسين واجهات البرمجة باستمرار لتقديم أفضل تجربة</p>
+                            </div>
+                        </div>
+                        
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-headset"></i>
+                            </div>
+                            <div class="feature-content">
+                                <h3>دعم فني متكامل</h3>
+                                <p>فريق دعم فني متاح على مدار الساعة لمساعدتك في أي استفسار</p>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="fas fa-headset"></i>
-                        </div>
-                        <div class="feature-content">
-                            <h3>دعم فني متكامل</h3>
-                            <p>فريق دعم فني متاح على مدار الساعة لمساعدتك في أي استفسار</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                </section>
+            </div>
         </main>
 
         <footer>
@@ -426,11 +670,78 @@
     </div>
 
     <script>
+        // بيانات واجهات البرمجة المثال
+        const sampleAPIs = [
+            {
+                "name": "akwam search",
+                "type": "search",
+                "path": "/api/search",
+                "endpoint": "/api/search",
+                "url": "https://obito-mr-apis.vercel.app/api/search/akwam?name=الهيبة",
+                "logo": "https://ak.sv/favicon.ico",
+                "description": "البحث عن الافلام في منصة اكوام",
+                "status": "Active"
+            },
+            {
+                "name": "instagram downloader",
+                "type": "media",
+                "path": "/api/instagram",
+                "endpoint": "/api/instagram",
+                "url": "https://obito-mr-apis.vercel.app/api/instagram?url=instagram-post-url",
+                "logo": "https://instagram.com/favicon.ico",
+                "description": "تحميل محتوى الانستجرام",
+                "status": "Active"
+            },
+            {
+                "name": "weather info",
+                "type": "tools",
+                "path": "/api/weather",
+                "endpoint": "/api/weather",
+                "url": "https://obito-mr-apis.vercel.app/api/weather?city=دبي",
+                "logo": "https://example.com/weather.png",
+                "description": "الحصول على معلومات الطقس",
+                "status": "Active"
+            },
+            {
+                "name": "qr generator",
+                "type": "tools",
+                "path": "/api/qr",
+                "endpoint": "/api/qr",
+                "url": "https://obito-mr-apis.vercel.app/api/qr?text=hello",
+                "logo": "https://example.com/qr.png",
+                "description": "مولد رموز QR",
+                "status": "Active"
+            },
+            {
+                "name": "text to speech",
+                "type": "ai",
+                "path": "/api/tts",
+                "endpoint": "/api/tts",
+                "url": "https://obito-mr-apis.vercel.app/api/tts?text=مرحبا",
+                "logo": "https://example.com/tts.png",
+                "description": "تحويل النص إلى كلام",
+                "status": "Active"
+            },
+            {
+                "name": "image processing",
+                "type": "media",
+                "path": "/api/image",
+                "endpoint": "/api/image",
+                "url": "https://obito-mr-apis.vercel.app/api/image?url=image-url",
+                "logo": "https://example.com/image.png",
+                "description": "معالجة الصور وتعديلها",
+                "status": "Inactive"
+            }
+        ];
+
         // تحميل فئات واجهات البرمجة
         async function loadCategories() {
             try {
-                const res = await fetch('/api/list');
-                const data = await res.json();
+                // في الحقيقة، استبدل هذا بطلب API الفعلي
+                // const res = await fetch('/api/list');
+                // const data = await res.json();
+                
+                const data = sampleAPIs; // استخدام البيانات المثال
                 const container = document.getElementById('categories-container');
                 
                 if (!data || data.length === 0) {
@@ -451,11 +762,14 @@
                     let icon = 'fas fa-cube';
                     let description = 'مجموعة من واجهات البرمجة المتخصصة';
                     
-                    if (category.includes('ذكاء')) icon = 'fas fa-brain';
-                    else if (category.includes('وسائط')) icon = 'fas fa-photo-video';
-                    else if (category.includes('أدوات')) icon = 'fas fa-tools';
-                    else if (category.includes('بيانات')) icon = 'fas fa-database';
-                    else if (category.includes('أمن')) icon = 'fas fa-shield-alt';
+                    if (category.includes('search') || category.includes('بحث')) icon = 'fas fa-search';
+                    else if (category.includes('media') || category.includes('وسائط')) icon = 'fas fa-photo-video';
+                    else if (category.includes('tools') || category.includes('أدوات')) icon = 'fas fa-tools';
+                    else if (category.includes('ai') || category.includes('ذكاء')) icon = 'fas fa-brain';
+                    else if (category.includes('security') || category.includes('أمن')) icon = 'fas fa-shield-alt';
+                    
+                    // حساب عدد APIs في هذه الفئة
+                    const apiCount = data.filter(api => api.type === category).length;
                     
                     categoryCard.innerHTML = `
                         <div class="category-icon">
@@ -463,11 +777,25 @@
                         </div>
                         <h3 class="category-name">${category}</h3>
                         <p class="category-desc">${description}</p>
-                        <a href="type.html?type=${encodeURIComponent(category)}" class="category-link">استكشاف الواجهات</a>
+                        <div style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                            <i class="fas fa-code"></i> ${apiCount} واجهة برمجة
+                        </div>
+                        <a href="#" class="category-link" data-category="${category}">استكشاف الواجهات</a>
                     `;
                     
                     container.appendChild(categoryCard);
                 });
+
+                // إضافة event listeners لروابط الفئات
+                document.querySelectorAll('[data-category]').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const category = e.target.getAttribute('data-category');
+                        filterAPIsByCategory(category);
+                        switchTab('all-apis');
+                    });
+                });
+
             } catch (error) {
                 console.error('Error loading categories:', error);
                 document.getElementById('categories-container').innerHTML = 
@@ -475,8 +803,134 @@
             }
         }
 
+        // تحميل جميع واجهات البرمجة
+        async function loadAllAPIs() {
+            try {
+                // في الحقيقة، استبدل هذا بطلب API الفعلي
+                // const res = await fetch('/api/list');
+                // const data = await res.json();
+                
+                const data = sampleAPIs; // استخدام البيانات المثال
+                const container = document.getElementById('apis-container');
+                
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<div class="loading"><p>❌ لا توجد واجهات برمجة متاحة حالياً.</p></div>';
+                    return;
+                }
+                
+                renderAPIs(data, container);
+                
+            } catch (error) {
+                console.error('Error loading APIs:', error);
+                document.getElementById('apis-container').innerHTML = 
+                    '<div class="loading"><p>⚠️ فشل في تحميل واجهات البرمجة. يرجى المحاولة لاحقاً.</p></div>';
+            }
+        }
+
+        // عرض واجهات البرمجة
+        function renderAPIs(apis, container) {
+            container.innerHTML = '';
+            
+            apis.forEach(api => {
+                const apiCard = document.createElement('div');
+                apiCard.className = 'api-card';
+                
+                // تحديد الأيقونة المناسبة
+                let icon = 'fas fa-code';
+                if (api.type.includes('search')) icon = 'fas fa-search';
+                else if (api.type.includes('media')) icon = 'fas fa-photo-video';
+                else if (api.type.includes('tools')) icon = 'fas fa-tools';
+                else if (api.type.includes('ai')) icon = 'fas fa-brain';
+                
+                apiCard.innerHTML = `
+                    <div class="api-status ${api.status === 'Active' ? 'status-active' : 'status-inactive'}">
+                        <i class="fas fa-circle"></i> ${api.status === 'Active' ? 'نشط' : 'غير نشط'}
+                    </div>
+                    <div class="api-header">
+                        <div class="api-icon">
+                            <i class="${icon}"></i>
+                        </div>
+                        <div class="api-info">
+                            <h3 class="api-name">${api.name}</h3>
+                            <span class="api-type">${api.type}</span>
+                        </div>
+                    </div>
+                    <p class="api-description">${api.description}</p>
+                    <div class="api-endpoint">
+                        <div class="endpoint-url">${api.url}</div>
+                    </div>
+                    <div class="api-actions">
+                        <button class="api-btn btn-test" onclick="testAPI('${api.url}')">
+                            <i class="fas fa-play"></i> اختبار
+                        </button>
+                        <button class="api-btn btn-copy" onclick="copyToClipboard('${api.url}')">
+                            <i class="fas fa-copy"></i> نسخ الرابط
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(apiCard);
+            });
+        }
+
+        // تصفية واجهات البرمجة حسب الفئة
+        function filterAPIsByCategory(category) {
+            const filteredAPIs = sampleAPIs.filter(api => api.type === category);
+            const container = document.getElementById('apis-container');
+            renderAPIs(filteredAPIs, container);
+        }
+
+        // تبديل التبويبات
+        function switchTab(tabName) {
+            // إخفاء جميع المحتويات
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // إزالة النشط من جميع الأزرار
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // إظهار المحتوى المحدد
+            document.getElementById(tabName).classList.add('active');
+            
+            // إضافة النشط للزر المحدد
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // تحميل المحتوى إذا لزم الأمر
+            if (tabName === 'all-apis') {
+                loadAllAPIs();
+            }
+        }
+
+        // نسخ إلى الحافظة
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('تم نسخ الرابط إلى الحافظة!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+
+        // اختبار API
+        function testAPI(url) {
+            window.open(url, '_blank');
+        }
+
         // تحميل الفئات عند بدء التشغيل
-        document.addEventListener('DOMContentLoaded', loadCategories);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCategories();
+            
+            // إضافة event listeners لأزرار التبويب
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const tabName = e.target.getAttribute('data-tab');
+                    switchTab(tabName);
+                });
+            });
+        });
     </script>
 </body>
 </html>
