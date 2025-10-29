@@ -20,6 +20,8 @@
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
+            --endpoint-bg: #1e293b;
+            --endpoint-text: #f1f5f9;
             --sidebar-width: 280px;
             --header-height: 70px;
         }
@@ -565,20 +567,23 @@
         }
 
         .api-endpoint {
-            background: rgba(0, 0, 0, 0.3);
+            background: var(--endpoint-bg);
             padding: 1rem;
             border-radius: 10px;
             margin-bottom: 1.5rem;
             border: 1px solid var(--border);
             position: relative;
+            font-family: 'Tajawal', sans-serif;
         }
 
         .endpoint-url {
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            color: var(--success);
+            font-family: 'Tajawal', sans-serif;
+            font-size: 0.95rem;
+            color: var(--endpoint-text);
             word-break: break-all;
             line-height: 1.5;
+            direction: ltr;
+            text-align: left;
         }
 
         .api-actions {
@@ -820,16 +825,16 @@
             </a>
         </nav>
         
-        <button class="nav-collapse-btn">
+        <button class="nav-collapse-btn" id="navCollapseBtn">
             <i class="fas fa-angle-left"></i>
         </button>
     </aside>
 
     <!-- Main Wrapper -->
-    <div class="main-wrapper">
+    <div class="main-wrapper" id="mainWrapper">
         <!-- Header -->
         <header class="main-header">
-            <button class="menu-toggle">
+            <button class="menu-toggle" id="menuToggle">
                 <i class="fas fa-bars"></i>
             </button>
             
@@ -837,7 +842,7 @@
                 <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-search"></i></span>
                     <input type="text" id="searchInput" class="form-control" placeholder="ابحث في الواجهات...">
-                    <button class="clear-search">
+                    <button class="clear-search" id="clearSearch">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -900,12 +905,11 @@
                 </p>
                 
                 <div class="tab-content">
-                    <div class="tab-header">
-                        <button class="tab-button active" data-tab="all">جميع الواجهات</button>
-                        <button class="tab-button" data-tab="search">البحث</button>
-                        <button class="tab-button" data-tab="media">الوسائط</button>
-                        <button class="tab-button" data-tab="tools">الأدوات</button>
-                        <button class="tab-button" data-tab="ai">الذكاء الاصطناعي</button>
+                    <div class="tab-header" id="tabHeader">
+                        <!-- Tabs will be generated dynamically -->
+                        <div class="loading">
+                            <p>جاري تحميل الأقسام<span class="loading-dots"></span></p>
+                        </div>
                     </div>
                     
                     <div class="tab-panes">
@@ -918,34 +922,6 @@
                                         </svg>
                                         <p>جاري تحميل الواجهات<span class="loading-dots"></span></p>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="tab-search" class="tab-pane">
-                            <div class="api-cards" id="searchContainer">
-                                <div class="loading">
-                                    <p>جاري تحميل واجهات البحث<span class="loading-dots"></span></p>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="tab-media" class="tab-pane">
-                            <div class="api-cards" id="mediaContainer">
-                                <div class="loading">
-                                    <p>جاري تحميل واجهات الوسائط<span class="loading-dots"></span></p>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="tab-tools" class="tab-pane">
-                            <div class="api-cards" id="toolsContainer">
-                                <div class="loading">
-                                    <p>جاري تحميل واجهات الأدوات<span class="loading-dots"></span></p>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="tab-ai" class="tab-pane">
-                            <div class="api-cards" id="aiContainer">
-                                <div class="loading">
-                                    <p>جاري تحميل واجهات الذكاء الاصطناعي<span class="loading-dots"></span></p>
                                 </div>
                             </div>
                         </div>
@@ -973,75 +949,176 @@
     </div>
 
     <script>
-        // Hide loading screen
+        // Global variables
+        let allAPIs = [];
+        let currentTab = 'all';
+        let isSidebarCollapsed = false;
+
+        // Hide loading screen and load data
         window.addEventListener('load', () => {
             setTimeout(() => {
                 document.getElementById('loadingScreen').style.display = 'none';
-                loadAllAPIs();
+                loadAPIData();
             }, 1500);
         });
 
         // Mobile menu toggle
-        document.querySelector('.menu-toggle').addEventListener('click', () => {
-            document.querySelector('.side-nav').classList.toggle('active');
+        document.getElementById('menuToggle').addEventListener('click', () => {
+            document.getElementById('sideNavigation').classList.toggle('active');
         });
 
-        // Tab functionality
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', () => {
-                // Remove active class from all buttons and panes
-                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-                
-                // Add active class to clicked button
-                button.classList.add('active');
-                
-                // Show corresponding pane
-                const tabId = button.getAttribute('data-tab');
-                const pane = document.getElementById(`tab-${tabId}`);
-                pane.classList.add('active');
-                
-                // Load APIs for this tab
-                loadTabContent(tabId);
-            });
+        // Nav collapse button
+        document.getElementById('navCollapseBtn').addEventListener('click', () => {
+            const sidebar = document.getElementById('sideNavigation');
+            const mainWrapper = document.getElementById('mainWrapper');
+            
+            if (isSidebarCollapsed) {
+                // Expand sidebar
+                sidebar.style.transform = 'translateX(0)';
+                mainWrapper.style.marginRight = '280px';
+                document.getElementById('navCollapseBtn').innerHTML = '<i class="fas fa-angle-left"></i>';
+            } else {
+                // Collapse sidebar
+                sidebar.style.transform = 'translateX(100%)';
+                mainWrapper.style.marginRight = '0';
+                document.getElementById('navCollapseBtn').innerHTML = '<i class="fas fa-angle-right"></i>';
+            }
+            
+            isSidebarCollapsed = !isSidebarCollapsed;
+        });
+
+        // Clear search functionality
+        document.getElementById('clearSearch').addEventListener('click', () => {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearch').style.display = 'none';
+            filterAPIs(currentTab, '');
+        });
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.trim();
+            document.getElementById('clearSearch').style.display = searchTerm ? 'block' : 'none';
+            filterAPIs(currentTab, searchTerm);
         });
 
         // Load APIs from your endpoint
-        async function loadAllAPIs() {
+        async function loadAPIData() {
             try {
                 const res = await fetch('/api/list');
-                const data = await res.json();
-                displayAPIs(data, 'apiContainer');
-                // Pre-cache data for other tabs
-                window.apiData = data;
+                allAPIs = await res.json();
+                
+                // Generate tabs dynamically from API types
+                generateTabs();
+                
+                // Load initial data
+                displayAPIs(allAPIs, 'apiContainer');
+                
             } catch (error) {
                 console.error('Error loading APIs:', error);
                 showError('apiContainer', 'فشل في تحميل الواجهات. يرجى المحاولة لاحقاً.');
             }
         }
 
-        async function loadTabContent(tabId) {
-            if (!window.apiData) {
-                try {
-                    const res = await fetch('/api/list');
-                    window.apiData = await res.json();
-                } catch (error) {
-                    console.error('Error loading APIs:', error);
-                    showError(`${tabId}Container`, 'فشل في تحميل الواجهات.');
-                    return;
-                }
-            }
+        // Generate tabs dynamically from API types
+        function generateTabs() {
+            const tabHeader = document.getElementById('tabHeader');
+            const tabPanes = document.querySelector('.tab-panes');
+            
+            // Extract unique types from APIs
+            const types = [...new Set(allAPIs.map(api => api.type))];
+            
+            // Create tabs HTML
+            let tabsHTML = `
+                <button class="tab-button active" data-tab="all">جميع الواجهات</button>
+            `;
+            
+            types.forEach(type => {
+                const tabId = type.toLowerCase().replace(/\s+/g, '-');
+                tabsHTML += `
+                    <button class="tab-button" data-tab="${tabId}">${type}</button>
+                `;
+                
+                // Create tab pane
+                const tabPane = document.createElement('div');
+                tabPane.id = `tab-${tabId}`;
+                tabPane.className = 'tab-pane';
+                tabPane.innerHTML = `
+                    <div class="api-cards" id="${tabId}Container">
+                        <div class="loading">
+                            <p>جاري تحميل واجهات ${type}<span class="loading-dots"></span></p>
+                        </div>
+                    </div>
+                `;
+                tabPanes.appendChild(tabPane);
+            });
+            
+            tabHeader.innerHTML = tabsHTML;
+            
+            // Add event listeners to new tabs
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    // Remove active class from all buttons and panes
+                    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    button.classList.add('active');
+                    
+                    // Show corresponding pane
+                    const tabId = button.getAttribute('data-tab');
+                    const pane = document.getElementById(`tab-${tabId}`);
+                    pane.classList.add('active');
+                    
+                    // Update current tab and load data
+                    currentTab = tabId;
+                    loadTabContent(tabId);
+                });
+            });
+        }
 
+        // Load content for specific tab
+        function loadTabContent(tabId) {
             let filteredAPIs;
+            
             if (tabId === 'all') {
-                filteredAPIs = window.apiData;
+                filteredAPIs = allAPIs;
             } else {
-                filteredAPIs = window.apiData.filter(api => api.type === tabId);
+                // Find the original type name from the tab ID
+                const originalType = allAPIs.find(api => 
+                    api.type.toLowerCase().replace(/\s+/g, '-') === tabId
+                )?.type;
+                
+                filteredAPIs = allAPIs.filter(api => api.type === originalType);
             }
             
             displayAPIs(filteredAPIs, `${tabId}Container`);
         }
 
+        // Filter APIs based on search term
+        function filterAPIs(tabId, searchTerm) {
+            let filteredAPIs;
+            
+            if (tabId === 'all') {
+                filteredAPIs = allAPIs;
+            } else {
+                const originalType = allAPIs.find(api => 
+                    api.type.toLowerCase().replace(/\s+/g, '-') === tabId
+                )?.type;
+                filteredAPIs = allAPIs.filter(api => api.type === originalType);
+            }
+            
+            if (searchTerm) {
+                filteredAPIs = filteredAPIs.filter(api => 
+                    api.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    api.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    api.type.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+            }
+            
+            displayAPIs(filteredAPIs, `${tabId}Container`);
+        }
+
+        // Display APIs in container
         function displayAPIs(apis, containerId) {
             const container = document.getElementById(containerId);
             
@@ -1093,9 +1170,20 @@
                 'media': 'fas fa-photo-video',
                 'tools': 'fas fa-tools',
                 'ai': 'fas fa-brain',
-                'security': 'fas fa-shield-alt'
+                'security': 'fas fa-shield-alt',
+                'download': 'fas fa-download',
+                'social': 'fas fa-share-alt',
+                'entertainment': 'fas fa-film'
             };
-            return icons[type] || 'fas fa-code';
+            
+            // Try to find matching icon
+            for (const [key, icon] of Object.entries(icons)) {
+                if (type.toLowerCase().includes(key)) {
+                    return icon;
+                }
+            }
+            
+            return 'fas fa-code';
         }
 
         function showError(containerId, message) {
@@ -1127,21 +1215,6 @@
                 console.error('Failed to copy: ', err);
             });
         }
-
-        // Search functionality
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            if (!window.apiData) return;
-            
-            const filteredAPIs = window.apiData.filter(api => 
-                api.name.toLowerCase().includes(searchTerm) ||
-                api.description.toLowerCase().includes(searchTerm) ||
-                api.type.toLowerCase().includes(searchTerm)
-            );
-            
-            const activeTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
-            displayAPIs(filteredAPIs, `${activeTab}Container`);
-        });
     </script>
 </body>
 </html>
