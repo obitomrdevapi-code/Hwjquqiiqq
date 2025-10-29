@@ -59,6 +59,6 @@ module.exports = {
   type: "info",
   url: `${global.t}/api/info/freefire?id=1010493740`,
   logo: "https://qu.ax/obitoajajq.png",
-  description: "جلب معلومات حساب فري فاير عبر رقم الحساب",
+  description: "جلب معلومات حساب فري فاير عبر ايدي الحساب",
   router
 };
