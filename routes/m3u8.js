@@ -1,85 +1,126 @@
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
+const fs = require("fs");
+const path = require("path");
 
 const router = express.Router();
-const base = "https://www.alloschool.com";
 
-/**
- * جلب عناوين الدروس مع روابطها من AlloSchool
- * @param {string} query
- * @returns {Promise<object>}
- */
-async function fetchLessonTitles(query = "") {
-  if (!query) return { status: false, message: "يرجى إدخال كلمة بحث."};
+
+async function fetchLinks(pages = 1, name = "") {
+  const scrapedLinks = [];
+  const headers = { "User-Agent": "Mozilla/5.0" };
+
+  for (let page = 1; page <= pages; page++) {
+    const url = `https://streamtest.in/logs/page/${page}?filter=${encodeURIComponent(name)}&is_public=true`;
+    console.log(`[INFO] Scraping: ${url}`);
+
+    try {
+      const response = await axios.get(url, { headers, timeout: 10000 });
+      const $ = cheerio.load(response.data);
+
+      $("p.line-clamp-3.hover\\:line-clamp-10").each((_, el) => {
+        const link = $(el).text().trim();
+        if (link && (link.startsWith("http://") || link.startsWith("https://"))) {
+          scrapedLinks.push(link);
+        }
+      });
+    } catch (err) {
+      console.error(`[ERROR] فشل استخراج الصفحة ${page}:`, err.message);
+    }
+  }
+
+  console.log(`[INFO] تم العثور على ${scrapedLinks.length} روابط`);
+  return scrapedLinks;
+}
+
+
+function createM3U(links, name = "logs") {
+  const timestamp = new Date().toISOString().replace(/[:T]/g, "-").split(".")[0];
+  const fileName = `${timestamp}_${name.toUpperCase()}.m3u`;
+  const filePath = path.join(__dirname, fileName);
+
+  fs.writeFileSync(filePath, links.join("\n"), "utf-8");
+  console.log(`[INFO] تم إنشاء ملف M3U: ${filePath}`);
+  return filePath;
+}
+
+
+router.get("/iptv", async (req, res) => {
+  const { pages, name } = req.query;
+  const maxPages = Number(pages) || 1;
+  const searchName = name || "";
 
   try {
-    const searchUrl = `${base}/search?q=${encodeURIComponent(query)}`;
-    const { data: html} = await axios.get(searchUrl);
-    const $ = cheerio.load(html);
+    const links = await fetchLinks(maxPages, searchName);
 
-    const results = [];
-    $('ul.list-unstyled li a').each((i, el) => {
-      const title = $(el).text().trim();
-      const href = $(el).attr('href');
-      const url = href.startsWith("http")? href: `${base}${href}`;
-      if (title && url.includes("/element/")) {
-        results.push({ title, url});
-}
-});
+    if (!links.length) {
+      return res.status(404).json({
+        status: 404,
+        success: false,
+        message: "لم يتم العثور على روابط IPTV 😢",
+      });
+    }
 
-    return {
-      status: true,
-      total: results.length,
-      results
-};
-} catch (err) {
-    console.error("[ERROR] فشل جلب الدروس:", err.message);
-    return { status: false, message: "حدث خطأ أثناء البحث."};
-}
-}
-
-/**
- * نقطة النهاية الرئيسية
- * مثال:
- *   /api/search/lesson-links?q=math
- */
-router.get("/alloschool", async (req, res) => {
-  const { q} = req.query;
-  const query = q || "";
-
-  if (!query) {
-    return res.status(400).json({
-      status: 400,
+    res.json({
+      status: 200,
+      success: true,
+      total: links.length,
+      filter: searchName || "all",
+      links,
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 500,
       success: false,
-      message: "يرجى إدخال كلمة البحث."
+      message: "حدث خطأ أثناء الجلب 🚫",
+      error: err.message,
+    });
+  }
 });
-}
 
-  const result = await fetchLessonTitles(query);
-  if (!result.status) {
-    return res.status(404).json({
-      status: 404,
+
+router.get("/iptv/save", async (req, res) => {
+  const { pages, name } = req.query;
+  const maxPages = Number(pages) || 1;
+  const searchName = name || "iptv";
+
+  try {
+    const links = await fetchLinks(maxPages, searchName);
+    if (!links.length) {
+      return res.status(404).json({
+        status: 404,
+        success: false,
+        message: "لم يتم العثور على روابط لإنشاء ملف M3U.",
+      });
+    }
+
+    const filePath = createM3U(links, searchName);
+    res.json({
+      status: 200,
+      success: true,
+      message: "✅ تم إنشاء ملف M3U بنجاح!",
+      file: path.basename(filePath),
+      total: links.length,
+      preview: links.slice(0, 5),
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 500,
       success: false,
-      message: result.message
-});
-}
-
-  res.json({
-    status: 200,
-    success: true,
-    query,
-    total: result.total,
-    results: result.results
-});
+      message: "حدث خطأ أثناء إنشاء الملف.",
+      error: err.message,
+    });
+  }
 });
 
 module.exports = {
   path: "/api/search",
-  name: "AlloSchool Lesson Links",
+  name: "iptv search",
   type: "search",
-  url: `${global.t}/api/search/alloschool?q=math`,
-  logo: "",
-  description: "البحث عن دروس و الفروض على موقع AlloSchool",
-  router
+  url: `${global.t}/api/search/iptv?pages=3&name=bein`,
+  logo: "https://qu.ax/obitoajajq.png",
+  description:
+    "البحث عن قنوات m3u8 التلفزيونة iptv الرياضيه/.... وحفظها على شكل m3u",
+  router,
 };
