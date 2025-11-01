@@ -1,52 +1,61 @@
 const express = require("express");
-const canvafy = require("canvafy");
-const axios = require("axios");
+const got = require("got");
+const cheerio = require("cheerio");
 
 const router = express.Router();
 
-router.get("/levelup", async (req, res) => {
-  const { profile, name, lvl1, lvl2} = req.query;
+async function searchAlloschool(query) {
+  try {
+    const response = await got("https://www.alloschool.com/search?q=" + encodeURIComponent(query));
+    const $ = cheerio.load(response.body);
+    const elements = $("ul.list-unstyled li");
+    const result = elements
+.map((i, el) => {
+        const title = $("a", el).text().trim();
+        const url = $("a", el).attr("href");
+        if (/^https?:\/\/www\.alloschool\.com\/element\/\d+$/.test(url)) {
+          return {
+            index: i + 1,
+            title,
+            url,
+};
+}
+})
+.get()
+.filter((item) => item);
+    return result;
+} catch (error) {
+    console.error("[ERROR] فشل البحث في AlloSchool:", error.message);
+    return [];
+}
+}
 
-  if (!profile ||!name ||!lvl1 ||!lvl2) {
+router.get("/search/alloschool", async (req, res) => {
+  const { q} = req.query;
+  if (!q) {
     return res.status(400).json({
       status: 400,
       success: false,
-      message: "❌ يجب توفير جميع البارامترات: profile, name, lvl1, lvl2",
+      message: "❌ يرجى إدخال كلمة البحث عبر البارامتر?q=",
 });
 }
 
-  try {
-    const reshapedName = [...name].reverse().join(""); // دعم بسيط للعربية
-
-    const image = await new canvafy.LevelUp()
-.setAvatar(profile)
-.setBackground("image", "https://i.postimg.cc/FstkPXKk/1761952083345.jpg")
-.setUsername(reshapedName)
-.setBorder("#000000")
-.setAvatarBorder("#00ff00")
-.setOverlayOpacity(0.7)
-.setLevels(Number(lvl1), Number(lvl2))
-.build();
-
-    res.setHeader("Content-Type", "image/png");
-    res.send(image);
-} catch (err) {
-    console.error("[ERROR] فشل إنشاء الصورة:", err.message);
-    res.status(500).json({
-      status: 500,
-      success: false,
-      message: "حدث خطأ أثناء توليد الصورة 🚫",
-      error: err.message,
+  const results = await searchAlloschool(q);
+  res.json({
+    status: 200,
+    success: true,
+    query: q,
+    count: results.length,
+    results,
 });
-}
 });
 
 module.exports = {
-  path: "/api/tools",
-  name: "Level Up Image",
-  type: "tools",
-  url: `${global.t}/api/tools/levelup?profile=رابط&name=اسم&lvl1=1&lvl2=2`,
-  logo: "https://i.ibb.co/m53WF9N/avatar-contact.png",
-  description: "تست",
+  path: "/api/search",
+  name: "AlloSchool Search",
+  type: "search",
+  url: `${global.t}/api/search/alloschool?q=كلمة`,
+  logo: "",
+  description: "بحث في موقع AlloSchool",
   router,
 };
