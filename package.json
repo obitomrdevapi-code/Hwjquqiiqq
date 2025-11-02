@@ -38,6 +38,7 @@
     "tough-cookie": "*",
     "util": "*",
     "yt-search": "^2.10.3",
-    "moment-timezone": "*"
+    "moment-timezone": "*",
+    "unzipper": "^0.10.11"
 }
 }
