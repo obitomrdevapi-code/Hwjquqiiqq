@@ -1,240 +1,135 @@
-// بسم الله الرحمن الرحيم ✨
-// Anime TTS API
-// API لتحويل النص إلى صوت بأنمي
-
 const express = require("express");
 const axios = require("axios");
-
+const unzipper = require("unzipper");
 const router = express.Router();
 
-// قائمة الأصوات الكاملة
-const models = {
-  miku: { voice_id: "67aee909-5d4b-11ee-a861-00163e2ac61b", voice_name: "Hatsune Miku", language: "Japanese" },
-  goku: { voice_id: "67aed50c-5d4b-11ee-a861-00163e2ac61b", voice_name: "Goku", language: "Japanese" },
-  eminem: { voice_id: "c82964b9-d093-11ee-bfb7-e86f38d7ec1a", voice_name: "Eminem", language: "English" },
-  luffy: { voice_id: "67aed6d8-5d4b-11ee-a861-00163e2ac61b", voice_name: "Luffy", language: "Japanese" },
-  naruto: { voice_id: "67aed7b4-5d4b-11ee-a861-00163e2ac61b", voice_name: "Naruto", language: "Japanese" }
-};
+/**
+ * رفع الملفات إلى Vercel
+ * @param {string} name - اسم الموقع
+ * @param {Buffer} buffer - محتوى الملف
+ * @param {string} mime - نوع الملف
+ * @returns {Promise<object>}
+ */
+async function deployToVercel(name, buffer, mime) {
+  const webName = name.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
+  const domainCheckUrl = `https://${webName}.vercel.app`;
 
-// توليد IP عشوائي
-function getRandomIp() {
-  return Array.from({ length: 4 }, () => Math.floor(Math.random() * 256)).join('.');
+  // التحقق من توفر اسم الموقع
+  try {
+    const check = await axios.get(domainCheckUrl);
+    if (check.status === 200) {
+      throw new Error(`❌ اسم الموقع ${webName} مستخدم بالفعل`);
+}
+} catch (e) {}
+
+  const filesToUpload = [];
+
+  if (/zip/.test(mime)) {
+    const directory = await unzipper.Open.buffer(buffer);
+    for (const file of directory.files) {
+      if (file.type === 'File') {
+        const content = await file.buffer();
+        const filePath = file.path.replace(/^\/+/, '').replace(/\\/g, '/');
+        filesToUpload.push({
+          file: filePath,
+          data: content.toString('base64'),
+          encoding: 'base64'
+});
+}
 }
 
-// قائمة User-Agents
-const userAgents = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-];
+    if (!filesToUpload.some(x => x.file.toLowerCase().endsWith('index.html'))) {
+      throw new Error('❌ ملف index.html غير موجود داخل ZIP');
+}
 
-// دالة لتحويل النص إلى صوت
-async function tts(text, specificModel = null) {
-  const agent = userAgents[Math.floor(Math.random() * userAgents.length)];
+} else if (/html/.test(mime)) {
+    filesToUpload.push({
+      file: 'index.html',
+      data: buffer.toString('base64'),
+      encoding: 'base64'
+});
+} else {
+    throw new Error('⚠️ نوع الملف غير مدعوم. الرجاء رفع ملف.zip أو.html');
+}
 
-  // إذا طلب نموذج محدد
-  const modelsToProcess = specificModel && models[specificModel] ? 
-    [[specificModel, models[specificModel]]] : 
-    Object.entries(models);
+  const headers = {
+    Authorization: `Bearer <token pecel>`, // ضع التوكن الخاص بك هنا
+    'Content-Type': 'application/json'
+};
 
-  const tasks = modelsToProcess.map(async ([key, { voice_id, voice_name, language }]) => {
-    const payload = {
-      text: text,
-      voice_id: voice_id,
-      speed: 1,
-      volume: 50,
-      format: "mp3"
-    };
+  // إنشاء مشروع
+  await axios.post('https://api.vercel.com/v9/projects', {
+    name: webName
+}, { headers}).catch(() => {});
 
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json, text/plain, */*',
-        'User-Agent': agent,
-        'X-Forwarded-For': getRandomIp(),
-        'Origin': 'https://filme.imyfone.com',
-        'Referer': 'https://filme.imyfone.com/text-to-speech/anime-text-to-speech/'
-      },
-      timeout: 30000
-    };
+  // نشر الموقع
+  const deployRes = await axios.post('https://api.vercel.com/v13/deployments', {
+    name: webName,
+    project: webName,
+    files: filesToUpload,
+    projectSettings: { framework: null}
+}, { headers});
 
-    try {
-      // جرب نقاط نهاية مختلفة
-      const endpoints = [
-        'https://voxbox-tts-api.imyfone.com/pc/v1/voice/tts',
-        'https://voxbox-tts-api.imyfone.com/api/v1/voice/tts',
-        'https://api.imyfone.com/voxbox/tts'
-      ];
-
-      let result = null;
-      let lastError = null;
-
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`Trying endpoint: ${endpoint}`);
-          const res = await axios.post(endpoint, payload, config);
-          
-          if (res.data && res.data.data) {
-            result = res.data.data;
-            break;
-          }
-        } catch (err) {
-          lastError = err;
-          console.log(`Endpoint ${endpoint} failed: ${err.message}`);
-          continue;
-        }
-      }
-
-      if (!result) {
-        throw new Error(lastError?.message || 'All endpoints failed');
-      }
-
-      return { 
-        model: key, 
-        voice_name, 
-        language,
-        audio_url: result.oss_url || result.audio_url || result.url,
-        status: "success"
-      };
-    } catch (err) {
-      console.error(`Error for model ${key}:`, err.message);
-      return { 
-        model: key, 
-        voice_name, 
-        language,
-        error: err.message,
-        status: "error" 
-      };
-    }
-  });
-
-  return Promise.all(tasks);
+  return deployRes.data;
 }
 
 /**
- * نقطة النهاية الرئيسية - تحويل النص إلى صوت
+ * نقطة النهاية الرئيسية
  * مثال:
- *   /api/tts/anime?text=hello&model=miku
+ *   /api/deploy?url_file=<رابط الملف>&name=<اسم الموقع>
  */
-router.get("/anime", async (req, res) => {
-  const text = req.query.text;
-  const model = req.query.model;
-  
-  if (!text) {
-    return res.status(400).json({
-      status: 400,
-      success: false,
-      message: "⚠️ يرجى تقديم النص المراد تحويله إلى صوت"
-    });
-  }
+router.get("/deploy", async (req, res) => {
+  const fileUrl = req.query.url_file;
+  const siteName = req.query.name;
 
-  // تحقق من الطول
-  if (text.length > 500) {
+  if (!fileUrl ||!siteName) {
     return res.status(400).json({
       status: 400,
       success: false,
-      message: "❌ النص طويل جداً. الحد الأقصى 500 حرف"
-    });
-  }
+      message: "⚠️ يرجى تقديم رابط الملف واسم الموقع"
+});
+}
 
   try {
-    console.log(`Processing TTS request for text: ${text}, model: ${model || 'all'}`);
-    
-    const results = await tts(text, model);
-    
-    const successfulResults = results.filter(r => r.status === "success");
-    
-    if (successfulResults.length === 0) {
-      console.log('All TTS attempts failed:', results);
+    const fileRes = await axios.get(fileUrl, { responseType: 'arraybuffer'});
+    const mime = fileRes.headers['content-type'];
+    const buffer = Buffer.from(fileRes.data);
+
+    const result = await deployToVercel(siteName, buffer, mime);
+
+    if (!result.url) {
       return res.status(500).json({
         status: 500,
         success: false,
-        message: "❌ فشل في تحويل النص إلى صوت. قد يكون الخادم غير متاح حالياً",
-        details: results.map(r => ({ model: r.model, error: r.error }))
-      });
-    }
-
-    console.log(`Successfully generated ${successfulResults.length} audio files`);
+        message: "❌ فشل في نشر الموقع",
+        error: result
+});
+}
 
     res.json({
       status: 200,
       success: true,
-      data: {
-        original_text: text,
-        total_voices: successfulResults.length,
-        voices: successfulResults
-      }
-    });
-    
-  } catch (err) {
-    console.error('TTS API Error:', err.message);
-    
+      url: `https://${siteName}.vercel.app`,
+      message: "✅ تم إنشاء الموقع بنجاح"
+});
+
+} catch (err) {
+    console.error('Deploy Error:', err.message);
     res.status(500).json({
       status: 500,
       success: false,
-      message: "حدث خطأ أثناء تحويل النص إلى صوت",
+      message: "❌ حدث خطأ أثناء نشر الموقع",
       error: err.message
-    });
-  }
 });
-
-/**
- * نقطة النهاية - قائمة الأصوات المتاحة
- * مثال:
- *   /api/tts/voices
- */
-router.get("/voices", async (req, res) => {
-  const voicesList = Object.entries(models).map(([key, data]) => ({
-    id: key,
-    name: data.voice_name,
-    language: data.language,
-    voice_id: data.voice_id
-  }));
-
-  res.json({
-    status: 200,
-    success: false,
-    data: {
-      total_voices: voicesList.length,
-      voices: voicesList
-    }
-  });
-});
-
-/**
- * نقطة النهاية - اختبار الخدمة
- * مثال:
- *   /api/tts/test
- */
-router.get("/test", async (req, res) => {
-  try {
-    // اختبار بسيط
-    const testText = "Hello world";
-    const results = await tts(testText, "miku");
-    
-    const success = results.some(r => r.status === "success");
-    
-    res.json({
-      status: 200,
-      success: success,
-      message: success ? "✅ الخدمة تعمل بشكل طبيعي" : "❌ الخدمة لا تعمل",
-      test_results: results
-    });
-  } catch (err) {
-    res.json({
-      status: 500,
-      success: false,
-      message: "❌ فشل اختبار الخدمة",
-      error: err.message
-    });
-  }
+}
 });
 
 module.exports = {
-  path: "/api/tts",
-  name: "anime tts",
-  type: "tts",
-  url: `${global.t}/api/tts/anime?text=hello&model=miku`,
-  logo: "https://cdn-icons-png.flaticon.com/512/2936/2936735.png",
-  description: "تحويل النص إلى صوت بأنمي مع أصوات متعددة",
+  path: "/api/deploy",
+  name: "vercel web deploy",
+  type: "tools",
+  url: `${global.t}/api/deploy?url_file=<رابط الملف>&name=<اسم الموقع>`,
+  logo: "",
+  description: "تست",
   router
 };
