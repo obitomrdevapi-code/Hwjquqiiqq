@@ -1,114 +1,117 @@
-// بسم الله الرحمن الرحيم ✨
-// Episode JSON Scraper API
-// جلب بيانات الحلقة من API مباشرة
-
 const express = require("express");
 const axios = require("axios");
 
 const router = express.Router();
 
-const API_URL = "http://217.154.201.164:7763/api/witanime";
-const TIMEOUT = 15000;
-
 /**
- * جلب بيانات الحلقة من API
- * @param {string} url - رابط الحلقة
+ * إرسال تفاعل إلى منشور في القناة
+ * @param {string} channelLink - رابط القناة
+ * @param {string} emoji - الإيموجي المطلوب
  * @returns {Promise<object>}
  */
-async function fetchEpisodeData(url) {
-  const apiUrl = `${API_URL}?url=${encodeURIComponent(url)}`;
+async function sendChannelReaction(channelLink, emoji) {
+  const url = "https://foreign-marna-sithaunarathnapromax-9a005c2e.koyeb.app/api/channel/react-to-post";
   
-  const response = await axios.get(apiUrl, { 
-    timeout: TIMEOUT 
-  });
-
-  return response.data;
+  const headers = {
+    'authority': 'foreign-marna-sithaunarathnapromax-9a005c2e.koyeb.app',
+    'accept': 'application/json, text/plain, */*',
+    'accept-language': 'ar-AE,ar;q=0.9,fr-MA;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
+    'content-type': 'application/json',
+    'cookie': 'jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MGNkODZhMDI0NmVlM2VmN2FlMGFmZiIsImlhdCI6MTc2MjQ1OTA2NCwiZXhwIjoxNzYzMDYzODY0fQ.CuAYqAeMtgLNKNl_SbEOI2mxuyno9xlE0hdje4zAwm4',
+    'origin': 'https://asitha.top',
+    'referer': 'https://asitha.top/',
+    'sec-ch-ua': '"Chromium";v="107", "Not=A?Brand";v="24"',
+    'sec-ch-ua-mobile': '?1',
+    'sec-ch-ua-platform': '"Android"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'cross-site',
+    'user-agent': 'Mozilla/5.0 (Linux; Android 12; SM-A217F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36'
+  };
+  
+  const data = {
+    "post_link": channelLink,
+    "reacts": emoji
+  };
+  
+  try {
+    const response = await axios.post(url, data, { headers });
+    return {
+      success: true,
+      status: response.status,
+      data: response.data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      status: error.response?.status || 500,
+      message: error.message,
+      data: error.response?.data
+    };
+  }
 }
+
+/**
+ * الحصول على قائمة التفاعلات المتاحة
+ * @returns {Array}
+ */
 
 /**
  * نقطة النهاية الرئيسية
  * مثال:
- *   /api/episode/json?url=https://witanime.you/episode/naruto-1
+ *   /api/telegram/react?link=https://t.me/channel/123&emoji=❤️
  */
-router.get("/json", async (req, res) => {
-  const { url } = req.query;
+router.get("/like_whatssap", async (req, res) => {
+  const channelLink = req.query.link;
+  const emoji = req.query.emoji;
 
-  if (!url) {
+  // التحقق من المدخلات
+  if (!channelLink || !emoji) {
     return res.status(400).json({
       status: 400,
       success: false,
-      message: "⚠️ الرجاء إرسال رابط الحلقة (url) كمعامل استعلام"
+      message: "⚠️ يرجى إدخال رابط القناة والإيموجي",
+      example: `${global.t}/api/telegram/react?link=https://t.me/channel/123&emoji=❤️`
     });
   }
 
   try {
-    const episodeData = await fetchEpisodeData(url);
-
-    res.json({
-      status: 200,
-      success: true,
-      episodeUrl: url,
-      data: episodeData
-    });
-  } catch (err) {
-    res.status(500).json({
-      status: 500,
-      success: false,
-      message: "فشل في جلب البيانات من API",
-      error: err.message
-    });
-  }
-});
-
-/**
- * نقطة النهاية البديلة للتحقق من صحة الرابط
- * مثال:
- *   /api/episode/validate?url=https://witanime.you/episode/naruto-1
- */
-router.get("/validate", async (req, res) => {
-  const { url } = req.query;
-
-  if (!url) {
-    return res.status(400).json({
-      status: 400,
-      success: false,
-      message: "⚠️ الرجاء إرسال رابط الحلقة (url) كمعامل استعلام"
-    });
-  }
-
-  try {
-    const episodeData = await fetchEpisodeData(url);
+    const result = await sendChannelReaction(channelLink, emoji);
     
-    // التحقق من وجود البيانات الأساسية
-    const isValid = episodeData && 
-                   (episodeData.sources || episodeData.streams || episodeData.video);
-
-    res.json({
-      status: 200,
-      success: true,
-      episodeUrl: url,
-      isValid: isValid,
-      hasSources: !!episodeData.sources,
-      hasStreams: !!episodeData.streams,
-      hasVideo: !!episodeData.video,
-      dataType: typeof episodeData
-    });
+    if (result.success) {
+      res.json({
+        success: true,
+        message: "✅ تم إرسال تفاعل بنجاح",
+        channel_link: channelLink,
+        emoji: emoji
+      });
+    } else {
+      res.status(result.status).json({
+        success: false,
+        message: "❌ فشل في إرسال التفاعل",
+        channel_link: channelLink,
+        emoji: emoji
+      });
+    }
   } catch (err) {
     res.status(500).json({
-      status: 500,
       success: false,
-      message: "فشل في التحقق من الرابط",
-      error: err.message
+      message: "حدث خطأ أثناء إرسال التفاعل",
+      channel_link: channelLink,
+      emoji: emoji
     });
   }
 });
-
+/**
+ * نقطة نهاية لعرض التفاعلات المتاحة
+ */
+ 
 module.exports = {
-  path: "/api/anime",
-  name: "episode data",
-  type: "anime",
-  url: `${global.t}/api/anime/json?url=https://witanime.you/episode/naruto-1`,
-  logo: "https://cdn-icons-png.flaticon.com/512/1532/1532556.png",
-  description: "جلب بيانات الحلقة من API مباشرة عبر الرابط",
+  path: "/api/tools",
+  name: "like channel whatsapp",
+  type: "tools",
+  url: `${global.t}/api/tools/like_whatssap?link=https://whatsapp.com/channel/0029Vb6dsyP3rZZgNJUD2F1A/206&emoji=❤️`,
+  logo: "",
+  description: "رشق لايكات منشورات واتساب",
   router
 };
