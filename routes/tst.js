@@ -1,5 +1,6 @@
 const express = require("express");
 const axios = require("axios");
+const https = require("https");
 
 const router = express.Router();
 
@@ -10,10 +11,13 @@ router.get("/mp4upload_vd", async (req, res) => {
 }
 
   try {
+    const agent = new https.Agent({ rejectUnauthorized: false});
+
     const videoResponse = await axios({
       method: 'GET',
       url,
       responseType: 'stream',
+      httpsAgent: agent,
       headers: {
         'user-agent': 'Mozilla/5.0 (Linux; Android 12)',
         'referer': 'https://www.mp4upload.com/'
