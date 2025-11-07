@@ -12,14 +12,20 @@ const DEFAULT_HEADERS = {
 
 /**
  * استخراج معلومات الملف من صفحة MediaFire
- * @param {string} url - رابط مباشر لصفحة الملف
+ * @param {string} url - رابط صفحة الملف
  * @returns {Promise<object>}
  */
 async function fetchMediafireFile(url) {
-  const { data} = await axios.get(url, { headers: DEFAULT_HEADERS});
-  const $ = cheerio.load(data);
+  let res;
+  try {
+    res = await axios.get(url, { headers: DEFAULT_HEADERS});
+} catch {
+    const translated = `https://www-mediafire-com.translate.goog/${url.replace("https://www.mediafire.com/", "")}?_x_tr_sl=en&_x_tr_tl=fr&_x_tr_hl=en&_x_tr_pto=wapp`;
+    res = await axios.get(translated, { headers: DEFAULT_HEADERS});
+}
 
-  let link = $("#downloadButton").attr("href");
+  const $ = cheerio.load(res.data);
+
   const size = $("#downloadButton").text()
 .replace("Download", "")
 .replace("(", "")
@@ -27,8 +33,10 @@ async function fetchMediafireFile(url) {
 .replace(/\n/g, "")
 .trim();
 
+  let link = $("#downloadButton").attr("href");
+
   if (!link || link.includes("javascript:void(0)")) {
-    const match = data.match(/"(https:\/\/download\d+\.mediafire\.com[^\"]+)"/i);
+    const match = res.data.match(/"(https:\/\/download\d+\.mediafire\.com[^\"]+)"/i);
     if (match) link = match[1];
 }
 
@@ -79,6 +87,7 @@ router.get("/mediafire", async (req, res) => {
       download: result.link,
 });
 } catch (err) {
+    console.error("❌ خطأ أثناء استخراج الملف:", err.message);
     res.status(500).json({
       status: 500,
       success: false,
