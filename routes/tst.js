@@ -30,9 +30,9 @@ router.get("/mp4upload_vd", async (req, res) => {
 });
 
 module.exports = {
-  path: "/api/mp4upload",
+  path: "/api/tst",
   name: "mp4upload video stream",
-  type: "video",
+  type: "tst",
   url: `${global.t}/api/tst/mp4upload_vd?url=https://...mp4`,
   logo: "https://cdn-icons-png.flaticon.com/512/1384/1384060.png",
   description: "بث فيديو mp4 مباشر من رابط mp4upload",
