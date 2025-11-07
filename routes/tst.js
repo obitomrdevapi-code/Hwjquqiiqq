@@ -1,35 +1,38 @@
 const express = require("express");
 const axios = require("axios");
-const { XMLParser} = require("fast-xml-parser");
+const cheerio = require("cheerio");
 
 const router = express.Router();
 
 /**
- * استخراج آخر أخبار Apple من MacRumors RSS
+ * استخراج آخر أخبار Apple من MacRumors باستخدام cheerio
  * @returns {Promise<Array>}
  */
-async function fetchAppleNews() {
+async function fetchAppleNewsWithCheerio() {
   const rssUrl = "https://feeds.macrumors.com/MacRumors-All";
   const { data} = await axios.get(rssUrl);
-  const parser = new XMLParser({ ignoreAttributes: false});
-  const parsed = parser.parse(data);
+  const $ = cheerio.load(data, { xmlMode: true});
 
-  const items = parsed.rss?.channel?.item || [];
+  const items = $("item");
   const result = [];
 
-  for (let i = 0; i < Math.min(items.length, 10); i++) {
-    const item = items[i];
-    const cleanDescription = item.description
-?.replace(/<[^>]*>/g, "")
-?.slice(0, 150) + "...";
+  items.each((i, el) => {
+    if (i>= 10) return false;
+
+    const title = $(el).find("title").text().trim() || "لا عنوان";
+    const link = $(el).find("link").text().trim() || "لا رابط";
+    const descriptionRaw = $(el).find("description").text().trim() || "لا يوجد وصف";
+    const pubDate = $(el).find("pubDate").text().trim() || "غير معروف";
+
+    const cleanDescription = descriptionRaw.replace(/<[^>]*>/g, "").slice(0, 150) + "...";
 
     result.push({
-      title: item.title || "لا عنوان",
-      link: item.link || "لا رابط",
-      description: cleanDescription || "لا يوجد وصف",
-      pubDate: item.pubDate || "غير معروف"
+      title,
+      link,
+      description: cleanDescription,
+      pubDate
 });
-}
+});
 
   return result;
 }
@@ -41,7 +44,7 @@ async function fetchAppleNews() {
  */
 router.get("/apple", async (req, res) => {
   try {
-    const news = await fetchAppleNews();
+    const news = await fetchAppleNewsWithCheerio();
     res.json({
       status: 200,
       success: true,
