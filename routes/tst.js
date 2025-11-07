@@ -1,193 +1,141 @@
-const express = require("express");
-const axios = require("axios");
-const cheerio = require("cheerio");
+// بسم الله الرحمن الرحيم ✨
+// Image to Video AI Scraper
+// تحويل الصور إلى فيديو باستخدام الذكاء الاصطناعي
 
-const router = express.Router();
-
-/**
- * استخراج آخر أخبار Apple من MacRumors باستخدام cheerio
- * @returns {Promise<Array>}
- */
-async function fetchAppleNewsWithCheerio() {
-  const rssUrl = "https://feeds.macrumors.com/MacRumors-All";
-  const { data} = await axios.get(rssUrl);
-  const $ = cheerio.load(data, { xmlMode: true});
-
-  const items = $("item");
-  const result = [];
-
-  items.each((i, el) => {
-    if (i>= 10) return false;
-
-    const title = $(el).find("title").text().trim() || "لا عنوان";
-    const link = $(el).find("link").text().trim() || "لا رابط";
-    const descriptionRaw = $(el).find("description").text().trim() || "لا يوجد وصف";
-    const pubDate = $(el).find("pubDate").text().trim() || "غير معروف";
-
-    const cleanDescription = descriptionRaw.replace(/<[^>]*>/g, "").slice(0, 150) + "...";
-
-    result.push({
-      title,
-      link,
-      description: cleanDescription,
-      pubDate
-});
-});
-
-  return result;
-}
+const axios = require('axios');
+const FormData = require('form-data');
 
 /**
- * استخراج محتوى خبر Apple مفصل من رابط معين
- * @param {string} url - رابط الخبر
- * @returns {Promise<Object>}
+ * تحويل الصورة إلى فيديو باستخدام الذكاء الاصطناعي
+ * @param {string} imageUrl - رابط الصورة
+ * @param {string} prompt - وصف الفيديو المطلوب
+ * @returns {Promise<object>}
  */
-async function fetchAppleNewsDetail(url) {
+async function generateVideoFromImage(imageUrl, prompt) {
   try {
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    };
-    
-    const { data } = await axios.get(url, { headers });
-    const $ = cheerio.load(data);
+    const gen = await axios.post('https://veo31ai.io/api/pixverse-token/gen', {
+      videoPrompt: prompt,
+      videoAspectRatio: '16:9',
+      videoDuration: 5,
+      videoQuality: '540p',
+      videoModel: 'v4.5',
+      videoImageUrl: imageUrl,
+      videoPublic: false
+    });
 
-    let title = $('meta[property="og:title"]').attr('content') || 
-                $('title').text().trim() || 
-                'لا عنوان';
+    const taskId = gen.data?.taskId;
+    if (!taskId) throw new Error('فشل في إنشاء المهمة');
 
-    let imageUrl = $('meta[property="og:image"]').attr('content') || 
-                   'لم يتم العثور على صورة';
+    const timeout = Date.now() + 180000;
+    let videoUrl;
 
-    let description = '';
-    
-    const contentSelectors = [
-      '.content--2u3grYDr',
-      '.ugc--2nTu61bm',
-      '.article-content',
-      '.content',
-      'article'
-    ];
+    while (Date.now() < timeout) {
+      const res = await axios.post('https://veo31ai.io/api/pixverse-token/get', {
+        taskId,
+        videoPublic: false,
+        videoQuality: '540p',
+        videoAspectRatio: '16:9',
+        videoPrompt: prompt
+      });
 
-    for (const selector of contentSelectors) {
-      const articleContent = $(selector);
-      if (articleContent.length > 0) {
-        const paragraphs = articleContent.find('p').map((i, el) => $(el).text().trim()).get();
-        const validParagraphs = paragraphs.filter(p => 
-          p.length > 20 && 
-          !p.toLowerCase().includes('related roundup') &&
-          !p.toLowerCase().includes('tag:') &&
-          !p.toLowerCase().includes('related forum:') &&
-          !p.toLowerCase().includes('read full article')
-        );
-        
-        if (validParagraphs.length > 0) {
-          description = validParagraphs.join('\n\n');
-          break;
-        }
-      }
+      videoUrl = res.data?.videoData?.url;
+      if (videoUrl) break;
+
+      await new Promise(r => setTimeout(r, 5000));
     }
 
-    if (description.length < 100) {
-      description = $('meta[property="og:description"]').attr('content') || 
-                    'لم يتم العثور على الوصف الكامل';
-    }
+    if (!videoUrl) throw new Error('فشل في إنشاء الفيديو');
 
     return {
-      title: title.trim(),
-      image_url: imageUrl,
-      description: description.trim(),
-      article_url: url,
-      success: true
+      success: true,
+      videoUrl: videoUrl,
+      taskId: taskId,
+      prompt: prompt
     };
   } catch (error) {
-    return {
-      success: false,
-      error: `خطأ في جلب المحتوى: ${error.message}`
-    };
+    throw new Error(`خطأ في الإنشاء: ${error.message}`);
   }
 }
 
 /**
- * نقطة النهاية الرئيسية
- * مثال:
- *   /api/news/apple
+ * رفع الصورة إلى السيرفر
+ * @param {Buffer} imageBuffer - بيانات الصورة
+ * @returns {Promise<string>}
  */
-router.get("/apple", async (req, res) => {
+async function uploadImage(imageBuffer) {
   try {
-    const news = await fetchAppleNewsWithCheerio();
-    res.json({
-      status: 200,
-      success: true,
-      total: news.length,
-      data: news
-});
-} catch (err) {
-    res.status(500).json({
-      status: 500,
-      success: false,
-      message: "حدث خطأ أثناء جلب الأخبار.",
-      error: err.message
-});
-}
-});
-
-/**
- * نقطة النهاية لجلب محتوى خبر معين
- * مثال:
- *   /api/news/apple_get?url=https://www.macrumors.com/2025/11/07/iphone-18-lineup-24mp-selfie-cameras/
- */
-router.get("/apple_get", async (req, res) => {
-  try {
-    const { url } = req.query;
-
-    if (!url) {
-      return res.status(400).json({
-        status: 400,
-        success: false,
-        message: "يجب تقديم رابط الخبر في المعلمة url"
-      });
-    }
-
-    if (!url.includes('macrumors.com')) {
-      return res.status(400).json({
-        status: 400,
-        success: false,
-        message: "يجب أن يكون الرابط من موقع MacRumors"
-      });
-    }
-
-    const newsDetail = await fetchAppleNewsDetail(url);
-    
-    if (!newsDetail.success) {
-      return res.status(500).json({
-        status: 500,
-        success: false,
-        message: newsDetail.error
-      });
-    }
-
-    res.json({
-      status: 200,
-      success: true,
-      data: newsDetail
+    const form = new FormData();
+    form.append('files[]', imageBuffer, { 
+      filename: 'image.jpg', 
+      contentType: 'image/jpeg' 
     });
 
-  } catch (err) {
-    res.status(500).json({
-      status: 500,
-      success: false,
-      message: "حدث خطأ أثناء جلب محتوى الخبر.",
-      error: err.message
+    const upload = await axios.post('https://uguu.se/upload', form, { 
+      headers: form.getHeaders() 
     });
+
+    const imageUrl = upload.data?.files?.[0]?.url;
+    if (!imageUrl) throw new Error('فشل في رفع الصورة');
+
+    return imageUrl;
+  } catch (error) {
+    throw new Error(`خطأ في الرفع: ${error.message}`);
   }
-});
+}
 
 module.exports = {
-  path: "/api/news",
-  name: "apple news",
-  type: "news",
-  url: `${global.t}/api/news/apple`,
-  logo: "",
-  description: "جلب آخر أخبار Apple من MacRumors",
-  router
+  path: "/api/ai",
+  name: "image to video ai",
+  type: "ai",
+  url: `${global.t}/api/ai/img2vid?img=<رابط الصورة>&prompt=<الوصف>`,
+  logo: "https://cdn-icons-png.flaticon.com/512/5832/5832415.png",
+  description: "تحويل الصور إلى فيديو باستخدام الذكاء الاصطناعي",
+  
+  /**
+   * نقطة النهاية الرئيسية
+   * مثال:
+   *   /api/ai/img2vid?img=https://example.com/image.jpg&prompt=فيديو متحرك
+   */
+  router: async (req, res) => {
+    const { img, prompt } = req.query;
+
+    if (!img || !prompt) {
+      return res.status(400).json({
+        status: 400,
+        success: false,
+        message: "⚠️ يرجى تقديم رابط الصورة والوصف المطلوب",
+        usage: "/api/ai/img2vid?img=<رابط الصورة>&prompt=<الوصف>"
+      });
+    }
+
+    try {
+      // جلب الصورة من الرابط
+      const imageResponse = await axios.get(img, { 
+        responseType: 'arraybuffer' 
+      });
+      
+      const imageBuffer = Buffer.from(imageResponse.data);
+
+      // رفع الصورة
+      const imageUrl = await uploadImage(imageBuffer);
+
+      // إنشاء الفيديو
+      const result = await generateVideoFromImage(imageUrl, prompt);
+
+      res.json({
+        status: 200,
+        success: true,
+        message: "✅ تم إنشاء الفيديو بنجاح",
+        data: result
+      });
+
+    } catch (err) {
+      res.status(500).json({
+        status: 500,
+        success: false,
+        message: "حدث خطأ أثناء معالجة الطلب",
+        error: err.message
+      });
+    }
+  }
 };
