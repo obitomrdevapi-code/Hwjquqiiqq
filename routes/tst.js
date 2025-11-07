@@ -1,63 +1,48 @@
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { lookup} = require("mime-types");
 
 const router = express.Router();
 
-const DEFAULT_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-  'Accept-Language': 'en-US,en;q=0.9',
-};
-
 /**
- * استخراج معلومات الملف من صفحة MediaFire
- * @param {string} url - رابط صفحة الملف
+ * استخراج معلومات الملف من MediaFire عبر وكيل nekolabs
+ * @param {string} url - رابط مباشر لصفحة الملف
  * @returns {Promise<object>}
  */
 async function fetchMediafireFile(url) {
-  let res;
-  try {
-    res = await axios.get(url, { headers: DEFAULT_HEADERS});
-} catch {
-    const translated = `https://www-mediafire-com.translate.goog/${url.replace("https://www.mediafire.com/", "")}?_x_tr_sl=en&_x_tr_tl=fr&_x_tr_hl=en&_x_tr_pto=wapp`;
-    res = await axios.get(translated, { headers: DEFAULT_HEADERS});
+  if (!url.includes("www.mediafire.com")) {
+    throw new Error("رابط غير صالح");
 }
 
-  const $ = cheerio.load(res.data);
+  const { data} = await axios.get(
+    `https://api.nekolabs.web.id/px?url=${encodeURIComponent(url)}`
+);
 
-  const size = $("#downloadButton").text()
-.replace("Download", "")
-.replace("(", "")
-.replace(")", "")
-.replace(/\n/g, "")
-.trim();
+  const $ = cheerio.load(data.result.content);
+  const raw = $("div.dl-info");
 
-  let link = $("#downloadButton").attr("href");
+  const filename =
+    $(".dl-btn-label").attr("title") ||
+    raw.find("div.intro div.filename").text().trim() ||
+    null;
 
-  if (!link || link.includes("javascript:void(0)")) {
-    const match = res.data.match(/"(https:\/\/download\d+\.mediafire\.com[^\"]+)"/i);
-    if (match) link = match[1];
-}
+  const ext = filename?.split(".").pop() || null;
+  const mimetype = lookup(ext?.toLowerCase()) || null;
 
-  if (!link || link.includes("javascript:void(0)")) {
-    const scrambled = $("#downloadButton").attr("data-scrambled-url");
-    if (scrambled) {
-      try {
-        link = Buffer.from(scrambled, "base64").toString("utf-8");
-} catch {}
-}
-}
+  const filesize = raw.find("ul.details li:nth-child(1) span").text().trim();
+  const uploaded = raw.find("ul.details li:nth-child(2) span").text().trim();
 
-  let nama = "file";
-  let mime = "bin";
-  if (link && link.startsWith("https")) {
-    const parts = link.split("/");
-    nama = decodeURIComponent(parts.pop().split("?")[0]);
-    mime = nama.includes(".")? nama.split(".").pop(): "bin";
-}
+  const dl = $("a#downloadButton").attr("href");
+  if (!dl) throw new Error("لم يتم العثور على رابط التحميل");
 
-  return { nama, mime, size, link};
+  return {
+    filename,
+    filesize,
+    mimetype,
+    uploaded,
+    download_url: dl,
+};
 }
 
 /**
@@ -81,13 +66,9 @@ router.get("/mediafire", async (req, res) => {
     res.json({
       status: 200,
       success: true,
-      filename: result.nama,
-      filesize: result.size,
-      mimetype: result.mime,
-      download: result.link,
+...result,
 });
 } catch (err) {
-    console.error("❌ خطأ أثناء استخراج الملف:", err.message);
     res.status(500).json({
       status: 500,
       success: false,
