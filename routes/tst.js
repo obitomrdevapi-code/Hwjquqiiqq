@@ -20,17 +20,18 @@ async function fetchMacRumorsArticle(url) {
   const $ = cheerio.load(data);
   const title = $("meta[property='og:title']").attr("content") || $("title").text().trim();
   const image = $("meta[property='og:image']").attr("content");
-  const paragraphs = [];
 
-  $(".article-content p").each((_, el) => {
-    const text = $(el).text().trim();
-    if (text && text.length> 30) paragraphs.push(text);
-});
+  const paragraphs = $(".article-content p")
+.map((_, el) => $(el).text().trim())
+.get()
+.filter(p => p.length> 30);
+
+  const excerpt = paragraphs.slice(0, 2).join("\n\n");
 
   return {
     title,
     image,
-    excerpt: paragraphs.slice(0, 5).join("\n\n")
+    excerpt
 };
 }
 
