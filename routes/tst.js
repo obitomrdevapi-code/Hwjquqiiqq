@@ -36,9 +36,7 @@ async function fetchMediafireResults(query) {
     results.push({
       filename: $("tr:nth-child(2) td:nth-child(2) b").text().trim(),
       filesize: $("tr:nth-child(3) td:nth-child(2)").text().trim(),
-      download: decoded("a").attr("href"),
-      source_url: $("tr:nth-child(5) td:nth-child(2)").text().trim(),
-      source_title: $("tr:nth-child(6) td:nth-child(2)").text().trim()
+      download: decoded("a").attr("href")      
 });
 }
 
