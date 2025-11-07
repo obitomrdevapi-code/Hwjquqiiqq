@@ -13,12 +13,6 @@ const FormData = require('form-data');
  */
 async function generateVideoFromImage(imageUrl, prompt) {
   try {
-    // أولاً نحتاج للحصول على token
-    const tokenResponse = await axios.get('https://veo31ai.io/api/pixverse-token');
-    const token = tokenResponse.data?.token;
-    
-    if (!token) throw new Error('لا يمكن الحصول على token');
-
     const gen = await axios.post('https://veo31ai.io/api/pixverse-token/gen', {
       videoPrompt: prompt,
       videoAspectRatio: '16:9',
@@ -27,11 +21,6 @@ async function generateVideoFromImage(imageUrl, prompt) {
       videoModel: 'v4.5',
       videoImageUrl: imageUrl,
       videoPublic: false
-    }, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
     });
 
     const taskId = gen.data?.taskId;
@@ -47,11 +36,6 @@ async function generateVideoFromImage(imageUrl, prompt) {
         videoQuality: '540p',
         videoAspectRatio: '16:9',
         videoPrompt: prompt
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
       });
 
       videoUrl = res.data?.videoData?.url;
@@ -99,25 +83,9 @@ async function uploadImage(imageBuffer) {
   }
 }
 
-/**
- * جلب الصورة من الرابط وتحويلها إلى buffer
- * @param {string} imageUrl - رابط الصورة
- * @returns {Promise<Buffer>}
- */
-async function downloadImage(imageUrl) {
-  try {
-    const response = await axios.get(imageUrl, {
-      responseType: 'arraybuffer'
-    });
-    return Buffer.from(response.data);
-  } catch (error) {
-    throw new Error(`فشل في تحميل الصورة: ${error.message}`);
-  }
-}
-
 module.exports = {
   path: "/api/ai",
-  name: "image to video ai", 
+  name: "image to video ai",
   type: "ai",
   url: `${global.t}/api/ai/img2vid?img=<رابط الصورة>&prompt=<الوصف>`,
   logo: "https://cdn-icons-png.flaticon.com/512/5832/5832415.png",
@@ -136,15 +104,18 @@ module.exports = {
         status: 400,
         success: false,
         message: "⚠️ يرجى تقديم رابط الصورة والوصف المطلوب",
-        usage: "/api/ai/img2vid?img=<رابط الصورة>&prompt=<الوصف>",
-        example: "/api/ai/img2vid?img=https://example.com/photo.jpg&prompt=شخص يرقص"
+        usage: "/api/ai/img2vid?img=<رابط الصورة>&prompt=<الوصف>"
       });
     }
 
     try {
       // جلب الصورة من الرابط
-      const imageBuffer = await downloadImage(img);
+      const imageResponse = await axios.get(img, { 
+        responseType: 'arraybuffer' 
+      });
       
+      const imageBuffer = Buffer.from(imageResponse.data);
+
       // رفع الصورة
       const imageUrl = await uploadImage(imageBuffer);
 
@@ -159,13 +130,11 @@ module.exports = {
       });
 
     } catch (err) {
-      console.error('Error:', err);
       res.status(500).json({
         status: 500,
         success: false,
         message: "حدث خطأ أثناء معالجة الطلب",
-        error: err.message,
-        details: "قد يكون السبب مشكلة في API الخارجي أو انتهاء صلاحية الخدمة"
+        error: err.message
       });
     }
   }
