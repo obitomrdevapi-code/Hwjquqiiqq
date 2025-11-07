@@ -4,11 +4,6 @@ const cheerio = require("cheerio");
 
 const router = express.Router();
 
-/**
- * استخراج محتوى خبر من MacRumors عبر رابط مباشر
- * @param {string} url
- * @returns {Promise<Object>}
- */
 async function fetchMacRumorsArticle(url) {
   const { data} = await axios.get(url, {
     headers: {
@@ -21,12 +16,16 @@ async function fetchMacRumorsArticle(url) {
   const title = $("meta[property='og:title']").attr("content") || $("title").text().trim();
   const image = $("meta[property='og:image']").attr("content");
 
-  const paragraphs = $(".article-content p")
-.map((_, el) => $(el).text().trim())
-.get()
-.filter(p => p.length> 30);
+  // استخراج الفقرات من داخل المقال
+  const paragraphs = [];
+  $(".article-content p").each((_, el) => {
+    const text = $(el).text().trim();
+    if (text.length> 30) paragraphs.push(text);
+});
 
-  const excerpt = paragraphs.slice(0, 2).join("\n\n");
+  const excerpt = paragraphs.length
+? paragraphs.slice(0, 3).join("\n\n")
+: "لا يوجد وصف متاح.";
 
   return {
     title,
@@ -35,11 +34,6 @@ async function fetchMacRumorsArticle(url) {
 };
 }
 
-/**
- * نقطة نهاية لجلب محتوى خبر من MacRumors
- * مثال:
- *   /api/news/macrumors?url=https://www.macrumors.com/2025/11/07/iphone-18-lineup-24mp-selfie-cameras/
- */
 router.get("/macrumors", async (req, res) => {
   const { url} = req.query;
   if (!url ||!url.startsWith("http")) {
