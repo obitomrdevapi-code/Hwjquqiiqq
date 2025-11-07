@@ -1,89 +1,101 @@
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const { lookup} = require("mime-types");
 
 const router = express.Router();
 
 /**
- * استخراج معلومات الملف من MediaFire عبر وكيل nekolabs
- * @param {string} url - رابط مباشر لصفحة الملف
- * @returns {Promise<object>}
+ * استخراج نتائج البحث من YouTube
+ * @param {string} query - كلمة البحث
+ * @returns {Promise<Array>}
  */
-async function fetchMediafireFile(url) {
-  if (!url.includes("www.mediafire.com")) {
-    throw new Error("رابط غير صالح");
+async function fetchYouTubeResults(query) {
+  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+  const { data} = await axios.get(searchUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      'Accept-Language': 'en-US,en;q=0.9'
 }
+});
 
-  const { data} = await axios.get(
-    `https://api.nekolabs.web.id/px?url=${encodeURIComponent(url)}`
-);
+  const $ = cheerio.load(data);
+  const scriptTags = $('script');
+  const scriptTag = scriptTags.get().find(tag => $(tag).html().includes('var ytInitialData ='));
+  if (!scriptTag) throw new Error('ytInitialData script tag not found.');
 
-  const $ = cheerio.load(data.result.content);
-  const raw = $("div.dl-info");
+  const ytInitialDataRaw = $(scriptTag).html().match(/var ytInitialData = (.*?});/);
+  if (!ytInitialDataRaw || ytInitialDataRaw.length < 2) throw new Error('Failed to extract ytInitialData.');
 
-  const filename =
-    $(".dl-btn-label").attr("title") ||
-    raw.find("div.intro div.filename").text().trim() ||
-    null;
+  const ytInitialData = JSON.parse(ytInitialDataRaw[1]);
+  const contents = ytInitialData?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents;
+  if (!contents) throw new Error('Search results not found.');
 
-  const ext = filename?.split(".").pop() || null;
-  const mimetype = lookup(ext?.toLowerCase()) || null;
-
-  const filesize = raw.find("ul.details li:nth-child(1) span").text().trim();
-  const uploaded = raw.find("ul.details li:nth-child(2) span").text().trim();
-
-  const dl = $("a#downloadButton").attr("href");
-  if (!dl) throw new Error("لم يتم العثور على رابط التحميل");
-
-  return {
-    filename,
-    filesize,
-    mimetype,
-    uploaded,
-    download_url: dl,
+  const items = contents.find(x => x.itemSectionRenderer)?.itemSectionRenderer?.contents || [];
+  const videos = items.filter(item => item.videoRenderer).map(item => {
+    const video = item.videoRenderer;
+    return {
+      title: video.title?.runs?.[0]?.text || 'No title',
+      videoId: video.videoId,
+      url: `https://www.youtube.com/watch?v=${video.videoId}`,
+      thumbnails: video.thumbnail?.thumbnails || [],
+      channel: video.ownerText?.runs?.[0]?.text || 'Unknown',
+      channelUrl: `https://www.youtube.com${video.ownerText?.runs?.[0]?.navigationEndpoint?.commandMetadata?.webCommandMetadata?.url || ''}`,
+      views: video.viewCountText?.simpleText || 'No views',
+      published: video.publishedTimeText?.simpleText || 'No date',
 };
+});
+
+  return videos;
 }
 
 /**
  * نقطة النهاية الرئيسية
  * مثال:
- *   /api/mediafire/file?url=https://www.mediafire.com/file/xxxxxx
+ *   /api/youtube/search?q=cat videos
  */
-router.get("/mediafire", async (req, res) => {
-  const { url} = req.query;
-
-  if (!url ||!url.startsWith("http") ||!url.includes("mediafire.com")) {
+router.get("/youtube", async (req, res) => {
+  const query = req.query.q;
+  if (!query) {
     return res.status(400).json({
       status: 400,
       success: false,
-      message: "⚠️ يرجى تقديم رابط MediaFire صالح عبر?url=",
+      message: "⚠️ يرجى إدخال كلمة للبحث عبر?q="
 });
 }
 
   try {
-    const result = await fetchMediafireFile(url);
+    const results = await fetchYouTubeResults(query);
+    if (!results.length) {
+      return res.status(404).json({
+        status: 404,
+        success: false,
+        message: "🚫 لم يتم العثور على نتائج."
+});
+}
+
     res.json({
       status: 200,
       success: true,
-...result,
+      total: results.length,
+      query,
+      results
 });
 } catch (err) {
     res.status(500).json({
       status: 500,
       success: false,
-      message: "حدث خطأ أثناء استخراج الملف.",
-      error: err.message,
+      message: "حدث خطأ أثناء استخراج نتائج YouTube.",
+      error: err.message
 });
 }
 });
 
 module.exports = {
-  path: "/api/download",
-  name: "mediafire download",
-  type: "download",
-  url: `${global.t}/api/download/mediafire?url=https://www.mediafire.com/file/xxxxxx`,
-  logo: "https://qu.ax/obitomediafire.png",
-  description: "تحميل من ميديافاير",
-  router,
+  path: "/api/search",
+  name: "youtube search",
+  type: "search",
+  url: `${global.t}/api/search/youtube?q=obito`,
+  logo: "https://qu.ax/obitoyoutube.png",
+  description: "البحث في اليوتيوب",
+  router
 };
