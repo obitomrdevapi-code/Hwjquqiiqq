@@ -85,7 +85,7 @@ async function getWattpadStoryDetails(storyUrl) {
 async function getChapterContent(chapterUrl) {
   try {
     const { data } = await axios.get(chapterUrl);
-    const $ = cheerio.load(html);
+    const $ = cheerio.load(data);
     
     let content = "";
     $(".panel-reading p, .panel-reading div").each((index, element) => {
