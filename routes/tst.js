@@ -1,161 +1,155 @@
-import express from "express";
-import axios from "axios";
-import cheerio from "cheerio";
+const express = require("express");
+const axios = require("axios");
+const cheerio = require("cheerio");
 
 const router = express.Router();
 
-router.get("/book", async (req, res) => {
-
+/**
+ * البحث عن كتب في موقع alarabimag.com
+ * @param {string} query - كلمة البحث
+ * @returns {Promise<Array>}
+ */
+async function searchBooks(query) {
   try {
-
-    const { query } = req.query;
-
-    if (!query) {
-
-      return res.status(400).json({
-
-        status: "error",
-
-        message: "يرجى إدخال اسم الكتاب أو الرواية للبحث عنها.",
-
-      });
-
-    }
-
     const searchUrl = `https://www.alarabimag.com/search/?q=${encodeURIComponent(query)}`;
-
-    const { data } = await axios.get(searchUrl);
-
+    const { data} = await axios.get(searchUrl);
     const $ = cheerio.load(data);
+    const results = [];
 
-    const books = [];
+    $(".hotbooks").slice(0, 10).each((index, element) => {
+      const title = $(element).find("h2 a").text().trim();
+      const link = "https://www.alarabimag.com" + $(element).find("h2 a").attr("href");
+      const description = $(element).find(".info").text().trim();
+      const image = "https://www.alarabimag.com" + $(element).find(".smallimg").attr("src");
 
-    // استخراج قائمة الكتب من البحث
-
-    const bookElements = $(".hotbooks").slice(0, 10); // تحديد 10 نتائج كحد أقصى
-
-    if (bookElements.length === 0) {
-
-      return res
-
-        .status(404)
-
-        .json({ status: "error", message: "لم يتم العثور على أي نتائج." });
-
-    }
-
-    // البحث عن روابط التنزيل لكل كتاب
-
-    await Promise.all(
-
-      bookElements
-
-        .map(async (_, element) => {
-
-          const title = $(element).find("h2 a").text().trim();
-
-          const url =
-
-            "https://www.alarabimag.com" + $(element).find("h2 a").attr("href");
-
-          const description = $(element).find(".info").text().trim();
-
-          const imageSrc =
-
-            "https://www.alarabimag.com" + $(element).find(".smallimg").attr("src");
-
-          try {
-
-            const { data: bookPage } = await axios.get(url);
-
-            const $$ = cheerio.load(bookPage);
-
-            const downloadLink = $$("#download a").attr("href");
-
-            if (!downloadLink) return;
-
-            const { data: downloadPage } = await axios.get(
-
-              "https://www.alarabimag.com" + downloadLink
-
-            );
-
-            const $$$ = cheerio.load(downloadPage);
-
-            const downloadLinks = $$$("#download a")
-
-              .map((_, el) => "https://www.alarabimag.com" + $$$(el).attr("href"))
-
-              .get();
-
-            const infos = $$$(".rTable .rTableRow")
-
-              .map((_, row) => {
-
-                return {
-
-                  title: $$$(row).find(".rTableHead").text().trim(),
-
-                  value: $$$(row).find(".rTableCell").text().trim(),
-
-                };
-
-              })
-
-              .get();
-
-            books.push({ title, url, description, imageSrc, downloadLinks, infos });
-
-          } catch (err) {
-
-            console.error(`خطأ أثناء جلب تفاصيل الكتاب (${title}):`, err.message);
-
-          }
-
-        })
-
-        .get()
-
-    );
-
-    res.json({
-
-      status: "success",
-
-      count: books.length,
-
-      books,
-
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-
-      status: "error",
-
-      message: "حدث خطأ أثناء البحث.",
-
-      error: error.message,
-
-    });
-
-  }
-
+      if (title && link) {
+        results.push({ index: index + 1, title, link, description, image});
+}
 });
 
-export default {
+    return results;
+} catch (error) {
+    throw new Error(`خطأ أثناء البحث: ${error.message}`);
+}
+}
 
-  path: "/api/tools",
+/**
+ * جلب تفاصيل الكتاب وروابط التحميل
+ * @param {string} bookUrl - رابط الكتاب
+ * @returns {Promise<object>}
+ */
+async function getBookDetails(bookUrl) {
+  try {
+    const { data: bookPage} = await axios.get(bookUrl);
+    const $ = cheerio.load(bookPage);
 
-  name: "Book-Search",
+    const title = $("h1").text().trim();
+    const description = $(".info").text().trim();
+    const image = "https://www.alarabimag.com" + $(".smallimg").attr("src");
 
-  type: "tools",
+    const downloadLink = $("#download a").attr("href");
+    if (!downloadLink) throw new Error("لم يتم العثور على رابط التحميل");
 
-  url: `${global.t}/api/tools/book?query=example`,
+    const { data: downloadPage} = await axios.get("https://www.alarabimag.com" + downloadLink);
+    const $$ = cheerio.load(downloadPage);
 
+    const downloadLinks = $$("a[href^='/download/']")
+.map((_, el) => "https://www.alarabimag.com" + $$(el).attr("href"))
+.get();
+
+    const infos = $$(".rTable.rTableRow").map((_, row) => {
+      return {
+        title: $$(row).find(".rTableHead").text().trim(),
+        value: $$(row).find(".rTableCell").text().trim(),
+};
+}).get();
+
+    return { title, description, image, downloadLinks, infos};
+} catch (error) {
+    throw new Error(`خطأ أثناء جلب تفاصيل الكتاب: ${error.message}`);
+}
+}
+
+/**
+ * نقطة النهاية للبحث
+ * مثال:
+ *   /api/alarabimag/search?q=رواية
+ */
+router.get("/alarabimag/search", async (req, res) => {
+  const query = req.query.q;
+  if (!query) {
+    return res.status(400).json({
+      status: 400,
+      success: false,
+      message: "⚠️ يرجى إدخال كلمة للبحث عنها"
+});
+}
+
+  try {
+    const results = await searchBooks(query);
+    if (!results.length) {
+      return res.status(404).json({
+        status: 404,
+        success: false,
+        message: "❌ لم يتم العثور على نتائج"
+});
+}
+
+    res.json({
+      status: 200,
+      success: true,
+      query,
+      totalResults: results.length,
+      results
+});
+} catch (err) {
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: "حدث خطأ أثناء البحث",
+      error: err.message
+});
+}
+});
+
+/**
+ * نقطة النهاية لجلب تفاصيل الكتاب
+ * مثال:
+ *   /api/alarabimag/get?link=https://www.alarabimag.com/book/123456
+ */
+router.get("/alarabimag/get", async (req, res) => {
+  const link = req.query.link;
+  if (!link) {
+    return res.status(400).json({
+      status: 400,
+      success: false,
+      message: "⚠️ يرجى إدخال رابط الكتاب"
+});
+}
+
+  try {
+    const details = await getBookDetails(link);
+    res.json({
+      status: 200,
+      success: true,
+      book: details
+});
+} catch (err) {
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: "حدث خطأ أثناء جلب معلومات الكتاب",
+      error: err.message
+      });
+}
+});
+
+module.exports = {
+  path: "/api/search",
+  name: "Alarabimag Book Search",
+  type: "search",
+  url: `${global.t}/api/search/alarabimag/search?q=example`,
   logo: "https://files.catbox.moe/wy1k15.jpg",
-
-  router,
-
+  description: "البحث عن الكتب وجلب روابط التحميل من موقع alarabimag.com",
+  router
 };
