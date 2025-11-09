@@ -25,16 +25,12 @@ async function searchHappyMod(query) {
     
     const title = $item.find(".list-info-title").text().trim();
     
-    // استخراج الإصدار والحجم بشكل صحيح
-    const versionSizeText = $item.find(".list-info-text:first-child").text().trim();
-    let version = "غير معروف";
-    let size = "غير معروف";
+    // استخراج الإصدار والحجم بشكل صحيح من العناصر المنفصلة
+    const versionElement = $item.find(".list-info-text:first-child span:first-child");
+    const sizeElement = $item.find(".list-info-text:first-child span:last-child");
     
-    if (versionSizeText.includes("+")) {
-      const parts = versionSizeText.split("+");
-      version = parts[0].replace(" ", "").trim();
-      size = parts[1].replace(" ", "").trim();
-    }
+    const version = versionElement.text().trim() || "غير معروف";
+    const size = sizeElement.text().trim() || "غير معروف";
     
     const modFeatures = $item.find(".list-info-text:last-child span").text().trim();
     const icon = $item.find(".list-icon img").attr("data-src") || $item.find(".list-icon img").attr("src");
@@ -43,8 +39,8 @@ async function searchHappyMod(query) {
     if (title) {
       results.push({
         title,
-        version: version || "غير معروف",
-        size: size || "غير معروف",
+        version: version,
+        size: size,
         modFeatures: modFeatures || "لا توجد تعديلات محددة",
         icon: icon ? (icon.startsWith("http") ? icon : `https://ar.happymod.cloud${icon}`) : null,
         url: appUrl ? `https://ar.happymod.cloud${appUrl}` : null,
@@ -142,7 +138,7 @@ async function fetchAppDetails(appUrl) {
     }
   });
 
-  // استخراج الإصدارات القديمة
+  // استخراج الإصدارات القديمة مع تعديل الروابط
   $(".version-item").each((index, element) => {
     const $version = $(element);
     const title = $version.find(".version-title").text().trim();
@@ -152,17 +148,27 @@ async function fetchAppDetails(appUrl) {
     const url = $version.attr("href");
 
     if (title && version) {
+      // تعديل رابط الإصدار لاستخدام original-downloading.html
+      let modifiedUrl = null;
+      if (url) {
+        // استخراج المسار الأساسي من الرابط
+        const basePath = url.split('/').slice(0, -1).join('/');
+        const appId = url.split('/').filter(Boolean).slice(-2, -1)[0];
+        modifiedUrl = `https://ar.happymod.cloud${basePath}/original-downloading.html`;
+      }
+
       appDetails.versions.push({
         title,
         version,
         size,
         date,
-        url: url ? `https://ar.happymod.cloud${url}` : null
+        url: modifiedUrl,
+        originalUrl: url ? `https://ar.happymod.cloud${url}` : null
       });
     }
   });
 
-  // استخراج روابط التحميل الإضافية
+  // استخراج روابط التحميل الإضافية مع تعديل الروابط
   $("a[href*='download']").each((index, element) => {
     const link = $(element).attr("href");
     const text = $(element).text().trim().replace(/\s+/g, " ");
@@ -171,15 +177,71 @@ async function fetchAppDetails(appUrl) {
       // تنظيف النص من التواريخ والمعلومات الزائدة
       const cleanText = text.split('\n')[0].trim();
       
+      // تعديل الرابط لاستخدام original-downloading.html
+      let modifiedLink = link;
+      if (link.includes("download.html")) {
+        modifiedLink = link.replace("download.html", "original-downloading.html");
+      }
+
       appDetails.downloadLinks.push({
         text: cleanText,
-        url: link.startsWith("http") ? link : `https://ar.happymod.cloud${link}`,
+        url: link.startsWith("http") ? modifiedLink : `https://ar.happymod.cloud${modifiedLink}`,
         type: "additional"
       });
     }
   });
 
   return appDetails;
+}
+
+/**
+ * استخراج رابط التحميل المباشر من صفحة original-downloading.html
+ * @param {string} downloadUrl - رابط صفحة التحميل
+ * @returns {Promise<string>}
+ */
+async function getDirectDownloadLink(downloadUrl) {
+  try {
+    const { data } = await axios.get(downloadUrl);
+    const $ = cheerio.load(data);
+
+    // البحث عن رابط التحميل المباشر في السكريبت
+    let directLink = null;
+
+    // الطريقة الأولى: البحث في السكريبت عن dlink
+    const scriptContent = $('script').html();
+    if (scriptContent) {
+      const dlinkMatch = scriptContent.match(/var dlink="([^"]+)"/);
+      if (dlinkMatch && dlinkMatch[1]) {
+        directLink = dlinkMatch[1];
+      }
+    }
+
+    // الطريقة الثانية: البحث عن apk_hits وبناء الرابط
+    if (!directLink) {
+      const apkUrlIdMatch = scriptContent.match(/var apk_url_id="([^"]+)"/);
+      if (apkUrlIdMatch && apkUrlIdMatch[1]) {
+        const appId = apkUrlIdMatch[1];
+        directLink = `http://topdata.downloadatoz.com/caicai_android_data_hits/proc/hits_process.php?id=${appId}&hl=happymoddl_mod`;
+      }
+    }
+
+    // الطريقة الثالثة: البحث عن روابط التحميل في الصفحة
+    if (!directLink) {
+      $('a[href*="download"]').each((index, element) => {
+        const href = $(element).attr('href');
+        if (href && (href.includes('.apk') || href.includes('downloadatoz'))) {
+          directLink = href.startsWith('http') ? href : `https://ar.happymod.cloud${href}`;
+          return false; // break the loop
+        }
+      });
+    }
+
+    return directLink;
+
+  } catch (error) {
+    console.error('Error fetching direct download link:', error);
+    return null;
+  }
 }
 
 /**
@@ -257,6 +319,59 @@ router.get("/happymod/app", async (req, res) => {
       status: 500,
       success: false,
       message: "حدث خطأ أثناء جلب تفاصيل التطبيق",
+      error: err.message
+    });
+  }
+});
+
+/**
+ * نقطة النهاية للحصول على رابط التحميل المباشر
+ * مثال:
+ *   /api/happymod/app_get?url=/minecraft-original/com.minecraftpe.minecraft.original.free/original-downloading.html
+ */
+router.get("/happymod/app_get", async (req, res) => {
+  const downloadUrl = req.query.url;
+  
+  if (!downloadUrl) {
+    return res.status(400).json({
+      status: 400,
+      success: false,
+      message: "⚠️ يرجى إدخال رابط صفحة التحميل"
+    });
+  }
+
+  try {
+    // التأكد من أن الرابط يحتوي على original-downloading.html
+    let finalUrl = downloadUrl;
+    if (!downloadUrl.includes("original-downloading.html")) {
+      // إذا كان الرابط الأساسي للتطبيق، نحوله إلى صفحة التحميل
+      const basePath = downloadUrl.replace(/\/$/, '');
+      finalUrl = `${basePath}/original-downloading.html`;
+    }
+
+    const directLink = await getDirectDownloadLink(finalUrl);
+
+    if (!directLink) {
+      return res.status(404).json({
+        status: 404,
+        success: false,
+        message: "🚫 لم يتم العثور على رابط تحميل مباشر"
+      });
+    }
+
+    res.json({
+      status: 200,
+      success: true,
+      downloadPage: finalUrl,
+      directDownloadLink: directLink,
+      message: "✅ تم العثور على رابط التحميل المباشر"
+    });
+    
+  } catch (err) {
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: "حدث خطأ أثناء جلب رابط التحميل المباشر",
       error: err.message
     });
   }
