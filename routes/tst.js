@@ -1,5 +1,5 @@
 // بسم الله الرحمن الرحيم ✨
-// HappyMod Search Scraper API - النسخة المحسنة مع الانتظار
+// HappyMod Search Scraper API - النسخة المحسنة مع محاكاة المتصفح الكاملة
 // البحث عن التطبيقات في موقع happymod.cloud
 
 const express = require("express");
@@ -181,19 +181,20 @@ function wait(ms) {
 }
 
 /**
- * استخراج رابط التحميل المباشر مع الانتظار والمحاكاة الكاملة
+ * محاكاة عملية التحميل الكاملة مع تتبع التوجيهات
  */
-async function getDirectDownloadLink(downloadUrl) {
+async function simulateDownloadProcess(downloadUrl) {
   try {
-    console.log(`🔍 بدء جلب الرابط من: ${downloadUrl}`);
+    console.log(`🔍 بدء محاكاة التحميل من: ${downloadUrl}`);
     
-    // إرسال طلب GET الأول لتحفيز عملية التحميل
-    const { data: initialData } = await axios.get(downloadUrl, {
+    // إرسال الطلب الأول لبدء عملية التحميل
+    const response = await axios.get(downloadUrl, {
       timeout: 30000,
+      maxRedirects: 5,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Linux; Android 12; SM-A217F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-        'Accept-Language': 'ar-AE,ar;q=0.9,fr-MA;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
+        'Accept-Language': 'ar-AE,ar;q=0.9,en-US;q=0.8,en;q=0.7',
         'Referer': downloadUrl.replace('downloading.html', 'download.html'),
         'Sec-Ch-Ua': '"Chromium";v="107", "Not=A?Brand";v="24"',
         'Sec-Ch-Ua-Mobile': '?1',
@@ -206,126 +207,167 @@ async function getDirectDownloadLink(downloadUrl) {
       }
     });
 
-    const $ = cheerio.load(initialData);
+    const $ = cheerio.load(response.data);
     let directLink = null;
 
-    // 🔍 البحث عن رابط happymod.cloud المباشر في السكريبت
+    // 🔍 البحث في السكريبت عن عملية التحميل الحقيقية
     const scriptContents = $('script');
+    
     for (let i = 0; i < scriptContents.length; i++) {
       const scriptContent = $(scriptContents[i]).html();
       if (scriptContent) {
-        // البحث عن روابط happymod.cloud التي تحتوي على /data1/apk_file/
-        const happymodLinkMatch = scriptContent.match(/(https?:\/\/[^"\']*happymod\.cloud[^"\']*\/data1\/apk_file[^"\']*\.apk[^"\']*)/);
-        if (happymodLinkMatch && happymodLinkMatch[1]) {
-          directLink = happymodLinkMatch[1];
-          console.log(`✅ تم العثور على رابط happymod.cloud مباشر: ${directLink}`);
-          break;
+        console.log(`🔍 البحث في السكريبت ${i + 1}...`);
+        
+        // البحث عن روابط happymod.cloud المباشرة مع /data1/apk_file/
+        const happymodDirectMatch = scriptContent.match(/(https?:\/\/[a-zA-Z0-9-]+\.happymod\.cloud\/data1\/apk_file\/[a-zA-Z0-9]+\/[a-zA-Z0-9]+\/[a-zA-Z0-9]+\/[^"'\s]+\.apk)/g);
+        if (happymodDirectMatch) {
+          directLink = happymodDirectMatch[0];
+          console.log(`✅ تم العثور على رابط مباشر: ${directLink}`);
+          return directLink;
         }
 
-        // البحث عن روابط في دوال JavaScript
-        const jsLinkMatch = scriptContent.match(/window\.location\.href\s*=\s*['"](https?:\/\/[^"']*happymod\.cloud[^"']*\.apk)['"]/);
-        if (jsLinkMatch && jsLinkMatch[1]) {
-          directLink = jsLinkMatch[1];
-          console.log(`✅ تم العثور على رابط في window.location: ${directLink}`);
-          break;
-        }
+        // البحث عن دوال JavaScript التي تقوم بالتوجيه بعد الانتظار
+        const redirectPatterns = [
+          /setTimeout\(function\(\)\s*\{[^}]*window\.location\.href\s*=\s*['"](https?:\/\/[^"']+\.happymod\.cloud[^"']*\.apk)['"][^}]*\},\s*(\d+)\)/,
+          /setTimeout\([^,]+,\s*(\d+)\)[^;]*;?[^;]*window\.location\.href\s*=\s*['"](https?:\/\/[^"']+\.happymod\.cloud[^"']*\.apk)['"]/,
+          /window\.location\.href\s*=\s*['"](https?:\/\/[^"']+\.happymod\.cloud[^"']*\.apk)['"]\s*;\s*\/\/\s*Count\s*down/,
+          /var\s+downloadUrl\s*=\s*['"](https?:\/\/[^"']+\.happymod\.cloud[^"']*\.apk)['"]/
+        ];
 
-        // البحث عن روابط في setTimeout أو دوال التأخير
-        const timeoutLinkMatch = scriptContent.match(/setTimeout\([^,]+,\s*(\d+)\).*?window\.location\.href\s*=\s*['"](https?:\/\/[^"']*happymod\.cloud[^"']*\.apk)['"]/);
-        if (timeoutLinkMatch && timeoutLinkMatch[2]) {
-          directLink = timeoutLinkMatch[2];
-          console.log(`✅ تم العثور على رابط في setTimeout: ${directLink}`);
-          break;
-        }
-      }
-    }
-
-    // إذا لم نجد الرابط مباشرة، ننتظر ونحاول مرة أخرى
-    if (!directLink) {
-      console.log('⏳ لم يتم العثور على الرابط مباشرة، جاري الانتظار وإعادة المحاولة...');
-      
-      // الانتظار 15 ثانية كما طلبت
-      await wait(15000);
-
-      // إرسال طلب ثانٍ بعد الانتظار
-      console.log('🔄 إرسال طلب ثان بعد الانتظار...');
-      const { data: secondData } = await axios.get(downloadUrl, {
-        timeout: 30000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 12; SM-A217F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-          'Referer': downloadUrl,
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-
-      const $$ = cheerio.load(secondData);
-
-      // البحث مرة أخرى في السكريبت بعد الانتظار
-      const secondScriptContents = $$('script');
-      for (let i = 0; i < secondScriptContents.length; i++) {
-        const scriptContent = $$(secondScriptContents[i]).html();
-        if (scriptContent) {
-          // البحث عن روابط happymod.cloud المباشرة
-          const happymodLinkMatch = scriptContent.match(/(https?:\/\/[^"\']*happymod\.cloud[^"\']*\/data1\/apk_file[^"\']*\.apk[^"\']*)/);
-          if (happymodLinkMatch && happymodLinkMatch[1]) {
-            directLink = happymodLinkMatch[1];
+        for (const pattern of redirectPatterns) {
+          const match = scriptContent.match(pattern);
+          if (match && match[1]) {
+            const waitTime = match[2] ? parseInt(match[2]) : 15000;
+            console.log(`⏳ تم العثور على رابط مع وقت انتظار: ${waitTime}ms`);
+            
+            // الانتظار للمدة المحددة
+            await wait(waitTime);
+            
+            directLink = match[1];
             console.log(`✅ تم العثور على رابط بعد الانتظار: ${directLink}`);
-            break;
+            return directLink;
           }
+        }
 
-          // البحث في meta refresh
-          const metaRefresh = $$('meta[http-equiv="refresh"]').attr('content');
-          if (metaRefresh) {
-            const urlMatch = metaRefresh.match(/url=(.+)/i);
-            if (urlMatch && urlMatch[1] && urlMatch[1].includes('happymod.cloud') && urlMatch[1].includes('.apk')) {
-              directLink = urlMatch[1];
-              console.log(`✅ تم العثور على رابط في meta refresh: ${directLink}`);
-              break;
+        // البحث عن process.php الذي يقوم بالتوجيه
+        const processPhpMatch = scriptContent.match(/(https?:\/\/[^"']+downloadatoz[^"']+hits_process\.php[^"']*)/);
+        if (processPhpMatch) {
+          console.log(`🔄 تم العثور على process.php، جاري تتبع التوجيه...`);
+          const processUrl = processPhpMatch[1];
+          
+          // الانتظار 15 ثانية كما في المتصفح
+          await wait(15000);
+          
+          // تتبع التوجيه من process.php
+          try {
+            const redirectResponse = await axios.get(processUrl, {
+              timeout: 30000,
+              maxRedirects: 10,
+              validateStatus: null,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 12; SM-A217F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36',
+                'Referer': downloadUrl
+              }
+            });
+
+            // البحث عن رابط happymod.cloud في الاستجابة
+            if (redirectResponse.data && typeof redirectResponse.data === 'string') {
+              const happymodMatch = redirectResponse.data.match(/(https?:\/\/[a-zA-Z0-9-]+\.happymod\.cloud\/data1\/apk_file\/[^"'\s]+\.apk)/);
+              if (happymodMatch) {
+                directLink = happymodMatch[1];
+                console.log(`✅ تم العثور على رابط عبر process.php: ${directLink}`);
+                return directLink;
+              }
             }
+
+            // إذا كان هناك توجيه في الرأس
+            if (redirectResponse.headers.location) {
+              const location = redirectResponse.headers.location;
+              if (location.includes('happymod.cloud') && location.includes('.apk')) {
+                directLink = location;
+                console.log(`✅ تم العثور على رابط في التوجيه: ${directLink}`);
+                return directLink;
+              }
+            }
+          } catch (error) {
+            console.log('⚠️ خطأ في تتبع process.php:', error.message);
           }
         }
       }
     }
 
-    // إذا لم نجد الرابط بعد كل هذا، نستخدم الطريقة القديمة كبديل
-    if (!directLink) {
-      console.log('🔄 استخدام الطريقة البديلة...');
-      
-      // البحث عن apk_hits و apk_url_id
-      const scriptContents = $('script');
-      let apkHits = null;
-      let apkUrlId = null;
-      
-      for (let i = 0; i < scriptContents.length; i++) {
-        const scriptContent = $(scriptContents[i]).html();
-        if (scriptContent) {
-          const apkHitsMatch = scriptContent.match(/var\s+apk_hits\s*=\s*"([^"]+)"/);
-          if (apkHitsMatch && apkHitsMatch[1]) {
-            apkHits = apkHitsMatch[1];
-          }
+    // 🔍 إذا لم نجد في السكريبت، نبحث في meta refresh
+    const metaRefresh = $('meta[http-equiv="refresh"]').attr('content');
+    if (metaRefresh) {
+      const urlMatch = metaRefresh.match(/url=(.+)/i);
+      if (urlMatch && urlMatch[1]) {
+        const redirectUrl = urlMatch[1].startsWith('http') ? urlMatch[1] : `https:${urlMatch[1]}`;
+        console.log(`🔄 توجيه meta refresh إلى: ${redirectUrl}`);
+        
+        if (redirectUrl.includes('happymod.cloud') && redirectUrl.includes('.apk')) {
+          return redirectUrl;
+        } else {
+          // تتبع التوجيه من meta refresh
+          await wait(5000);
+          const metaResponse = await axios.get(redirectUrl, {
+            timeout: 30000,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Linux; Android 12; SM-A217F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36',
+              'Referer': downloadUrl
+            }
+          });
           
-          const apkUrlIdMatch = scriptContent.match(/var\s+apk_url_id\s*=\s*"([^"]+)"/);
-          if (apkUrlIdMatch && apkUrlIdMatch[1]) {
-            apkUrlId = apkUrlIdMatch[1];
+          if (metaResponse.headers.location && metaResponse.headers.location.includes('.apk')) {
+            return metaResponse.headers.location;
           }
         }
-      }
-
-      if (apkHits && apkUrlId) {
-        const cleanApkHits = apkHits.replace(/\/$/, '');
-        directLink = `${cleanApkHits}?id=${apkUrlId}&hl=happymoddl_mod`;
-        console.log(`✅ تم بناء الرابط من apk_hits: ${directLink}`);
       }
     }
 
     return directLink;
 
   } catch (error) {
-    console.error('🚫 خطأ في جلب رابط التحميل المباشر:', error.message);
+    console.error('🚫 خطأ في محاكاة التحميل:', error.message);
     return null;
   }
+}
+
+/**
+ * استخراج رابط التحميل المباشر - النسخة النهائية
+ */
+async function getDirectDownloadLink(downloadUrl) {
+  // محاولة المحاكاة الكاملة أولاً
+  let directLink = await simulateDownloadProcess(downloadUrl);
+  
+  // إذا فشلت المحاكاة، نستخدم الطريقة التقليدية مع الانتظار
+  if (!directLink) {
+    console.log('🔄 استخدام الطريقة التقليدية مع الانتظار...');
+    await wait(15000);
+    
+    try {
+      const response = await axios.get(downloadUrl, {
+        timeout: 30000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 12; SM-A217F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36',
+          'Referer': downloadUrl
+        }
+      });
+
+      const $ = cheerio.load(response.data);
+      
+      // البحث النهائي في كل المحتوى
+      const pageContent = response.data;
+      const finalMatch = pageContent.match(/(https?:\/\/[a-zA-Z0-9-]+\.happymod\.cloud\/data1\/apk_file\/[^"'\s]+\.apk)/);
+      if (finalMatch) {
+        directLink = finalMatch[1];
+        console.log(`✅ تم العثور على رابط في المحاولة النهائية: ${directLink}`);
+      }
+    } catch (error) {
+      console.error('🚫 خطأ في المحاولة النهائية:', error.message);
+    }
+  }
+
+  return directLink;
 }
 
 /**
@@ -405,7 +447,7 @@ router.get("/happymod/app", async (req, res) => {
 });
 
 /**
- * نقطة النهاية للحصول على رابط التحميل المباشر مع الانتظار
+ * نقطة النهاية للحصول على رابط التحميل المباشر - النسخة النهائية
  */
 router.get("/happymod/app_get", async (req, res) => {
   const downloadUrl = req.query.url;
@@ -429,7 +471,7 @@ router.get("/happymod/app_get", async (req, res) => {
       finalUrl = downloadUrl.replace("download.html", "downloading.html");
     }
 
-    console.log(`🎯 جاري جلب الرابط المباشر مع الانتظار: ${finalUrl}`);
+    console.log(`🎯 جاري محاكاة عملية التحميل الكاملة: ${finalUrl}`);
     
     const directLink = await getDirectDownloadLink(finalUrl);
 
@@ -437,7 +479,7 @@ router.get("/happymod/app_get", async (req, res) => {
       return res.status(404).json({
         status: 404,
         success: false,
-        message: "🚫 لم يتم العثور على رابط تحميل مباشر بعد الانتظار"
+        message: "🚫 لم يتم العثور على رابط تحميل مباشر"
       });
     }
 
@@ -446,7 +488,7 @@ router.get("/happymod/app_get", async (req, res) => {
       success: true,
       downloadPage: finalUrl,
       directDownloadLink: directLink,
-      message: "✅ تم العثور على رابط التحميل المباشر بعد الانتظار"
+      message: "✅ تم العثور على رابط التحميل المباشر الحقيقي"
     });
     
   } catch (err) {
