@@ -174,7 +174,7 @@ async function fetchAppDetails(appUrl) {
 }
 
 /**
- * استخراج رابط التحميل المباشر من صفحة original-downloading.html - النسخة المحسنة
+ * استخراج رابط التحميل المباشر من صفحة original-downloading.html - التركيز على apk_hits
  */
 async function getDirectDownloadLink(downloadUrl) {
   try {
@@ -188,81 +188,59 @@ async function getDirectDownloadLink(downloadUrl) {
     const $ = cheerio.load(data);
     let directLink = null;
 
+    // 🔍 الطريقة الأولى: البحث عن apk_hits و apk_url_id وبناء الرابط المطلوب
     const scriptContents = $('script');
+    let apkHits = null;
+    let apkUrlId = null;
+    
     for (let i = 0; i < scriptContents.length; i++) {
       const scriptContent = $(scriptContents[i]).html();
       if (scriptContent) {
-        const dlinkMatch = scriptContent.match(/var\s+dlink\s*=\s*"([^"]+)"/);
-        if (dlinkMatch && dlinkMatch[1]) {
-          directLink = dlinkMatch[1];
-          break;
+        // البحث عن apk_hits
+        const apkHitsMatch = scriptContent.match(/var\s+apk_hits\s*=\s*"([^"]+)"/);
+        if (apkHitsMatch && apkHitsMatch[1]) {
+          apkHits = apkHitsMatch[1];
+        }
+        
+        // البحث عن apk_url_id
+        const apkUrlIdMatch = scriptContent.match(/var\s+apk_url_id\s*=\s*"([^"]+)"/);
+        if (apkUrlIdMatch && apkUrlIdMatch[1]) {
+          apkUrlId = apkUrlIdMatch[1];
         }
       }
     }
 
+    // بناء الرابط المطلوب إذا وجدنا المتغيرات
+    if (apkHits && apkUrlId) {
+      const cleanApkHits = apkHits.replace(/\/$/, '');
+      directLink = `${cleanApkHits}?id=${apkUrlId}&hl=happymoddl_mod`;
+    }
+
+    // 🔍 الطريقة الثانية: إذا لم نجد apk_hits، نبحث عن dlink كبديل
     if (!directLink) {
-      let apkHits = null;
-      let apkUrlId = null;
-      
-      const scriptContents = $('script');
       for (let i = 0; i < scriptContents.length; i++) {
         const scriptContent = $(scriptContents[i]).html();
         if (scriptContent) {
-          const apkHitsMatch = scriptContent.match(/var\s+apk_hits\s*=\s*"([^"]+)"/);
-          if (apkHitsMatch && apkHitsMatch[1]) {
-            apkHits = apkHitsMatch[1];
-          }
-          
-          const apkUrlIdMatch = scriptContent.match(/var\s+apk_url_id\s*=\s*"([^"]+)"/);
-          if (apkUrlIdMatch && apkUrlIdMatch[1]) {
-            apkUrlId = apkUrlIdMatch[1];
+          const dlinkMatch = scriptContent.match(/var\s+dlink\s*=\s*"([^"]+)"/);
+          if (dlinkMatch && dlinkMatch[1]) {
+            directLink = dlinkMatch[1];
+            break;
           }
         }
       }
-
-      if (apkHits && apkUrlId) {
-        const cleanApkHits = apkHits.replace(/\/$/, '');
-        directLink = `${cleanApkHits}?id=${apkUrlId}&hl=happymoddl_mod`;
-      }
     }
 
+    // 🔍 الطريقة الثالثة: البحث عن روابط downloadatoz مباشرة
     if (!directLink) {
-      $('a[href*=".apk"], a[href*="download"], button[onclick*="download"]').each((index, element) => {
+      $('a[href*="downloadatoz"], a[href*="hits_process"]').each((index, element) => {
         if (directLink) return false;
         
         const href = $(element).attr('href');
-        const onclick = $(element).attr('onclick');
-        
-        if (href && (href.includes('.apk') || href.includes('downloadatoz'))) {
+        if (href && href.includes('downloadatoz')) {
           directLink = href.startsWith('http') ? href : `https://ar.happymod.cloud${href}`;
           return false;
         }
-        
-        if (onclick) {
-          const onclickMatch = onclick.match(/window\.location\.href\s*=\s*'([^']+)'/);
-          if (onclickMatch && onclickMatch[1]) {
-            directLink = onclickMatch[1].startsWith('http') ? onclickMatch[1] : `https://ar.happymod.cloud${onclickMatch[1]}`;
-            return false;
-          }
-        }
       });
-    }
-
-    if (!directLink) {
-      const metaUrl = $('meta[property="og:url"], meta[name="twitter:url"]').attr('content');
-      if (metaUrl && metaUrl.includes('.apk')) {
-        directLink = metaUrl;
-      }
-      
-      if (!directLink) {
-        $('[data-url], [data-href]').each((index, element) => {
-          const dataUrl = $(element).attr('data-url') || $(element).attr('data-href');
-          if (dataUrl && dataUrl.includes('.apk')) {
-            directLink = dataUrl.startsWith('http') ? dataUrl : `https://ar.happymod.cloud${dataUrl}`;
-            return false;
-          }
-        });
-      }
     }
 
     return directLink;
@@ -350,7 +328,7 @@ router.get("/happymod/app", async (req, res) => {
 });
 
 /**
- * نقطة النهاية للحصول على رابط التحميل المباشر - النسخة المحسنة
+ * نقطة النهاية للحصول على رابط التحميل المباشر - التركيز على apk_hits
  */
 router.get("/happymod/app_get", async (req, res) => {
   const downloadUrl = req.query.url;
