@@ -1,0 +1,83 @@
+const express = require("express");
+const axios = require("axios");
+const https = require("https");
+
+const router = express.Router();
+
+/**
+ * استخراج رابط الفيديو المباشر من صفحة embed
+ * @param {string} url
+ * @returns {Promise<string>}
+ */
+async function extractMp4Url(url) {
+  const videoId = url.includes('/embed-')
+    ? url.match(/embed-([a-zA-Z0-9]+)\.html/)?.[1]
+    : url.match(/\/([a-zA-Z0-9]+)$/)?.[1];
+
+  if (!videoId) throw new Error("تعذر استخراج معرف الفيديو");
+
+  const embedUrl = `https://www.mp4upload.com/embed-${videoId}.html`;
+
+  const headers = {
+    'user-agent': 'Mozilla/5.0 (Linux; Android 12)',
+    'referer': embedUrl
+  };
+
+  const { data } = await axios.get(embedUrl, { headers });
+
+  const match =
+    data.match(/src\s*:\s*["']([^"']+\.mp4[^"']*)["']/i) ||
+    data.match(/<video[^>]+src=["']([^"']+)["']/i) ||
+    data.match(/(https?:\/\/[^\s"']+\.mp4[^\s"']*)/i);
+
+  if (!match || !match[1]) throw new Error("لم يتم العثور على رابط mp4");
+
+  let videoUrl = match[1];
+  if (videoUrl.startsWith('//')) videoUrl = 'https:' + videoUrl;
+  else if (videoUrl.startsWith('/')) videoUrl = 'https://www.mp4upload.com' + videoUrl;
+
+  return videoUrl;
+}
+
+router.get("/mp4upload", async (req, res) => {
+  const { url } = req.query;
+  if (!url || !url.includes("mp4upload.com")) {
+    return res.status(400).json({ success: false, message: "يرجى تقديم رابط mp4upload صالح" });
+  }
+
+  try {
+    const directUrl = await extractMp4Url(url);
+    
+    // إعادة التوجيه المباشر إلى بث الفيديو
+    const agent = new https.Agent({ rejectUnauthorized: false });
+
+    const videoResponse = await axios({
+      method: 'GET',
+      url: directUrl,
+      responseType: 'stream',
+      httpsAgent: agent,
+      headers: {
+        'user-agent': 'Mozilla/5.0 (Linux; Android 12)',
+        'referer': 'https://www.mp4upload.com/'
+      },
+      timeout: 60000
+    });
+
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Disposition', 'inline; filename="stream.mp4"');
+    videoResponse.data.pipe(res);
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+module.exports = {
+  path: "/api/download",
+  name: "mp4upload download",
+  type: "download",
+  url: `${global.t}/api/download/mp4upload?url=https://www.mp4upload.com/vjbax053zqsq`,
+  logo: "",
+  description: "تحميل الفيديوهات من mp4upload",
+  router
+};
