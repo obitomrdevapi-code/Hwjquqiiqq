@@ -4,7 +4,6 @@
 
 const express = require("express");
 const axios = require("axios");
-const { fromBuffer } = require("file-type");
 
 const router = express.Router();
 
