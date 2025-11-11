@@ -209,10 +209,10 @@ router.get("/models", async (req, res) => {
 });
 
 module.exports = {
-  path: "/api/ai",
+  path: "/api/aii",
   name: "VertexAI",
-  type: "ai",
-  url: `${global.t}/api/ai/chat?question=مرحبا&model=gemini-1.5-flash`,
+  type: "aii",
+  url: `${global.t}/api/aii/chat?question=مرحبا&model=gemini-1.5-flash`,
   logo: "https://qu.ax/obitoajajq.png",
   description: "واجهة برمجة تطبيقات الذكاء الاصطناعي من جوجل VertexAI",
   router
