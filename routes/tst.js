@@ -1,3 +1,7 @@
+// بسم الله الرحمن الرحيم ✨
+// VertexAI API Wrapper
+// واجهة برمجة تطبيقات الذكاء الاصطناعي من جوجل
+
 const express = require("express");
 const axios = require("axios");
 
@@ -143,10 +147,10 @@ router.get("/models", async (req, res) => {
 });
 
 module.exports = {
-  path: "/api/ai",
+  path: "/api/aii",
   name: "VertexAI",
-  type: "ai",
-  url: `${global.t}/api/ai/chatt?question=مرحبا&model=gemini-1.5-flash`,
+  type: "aii",
+  url: `${global.t}/api/aii/chatt?question=مرحبا&model=gemini-1.5-flash`,
   logo: "https://qu.ax/obitoajajq.png",
   description: "واجهة برمجة تطبيقات الذكاء الاصطناعي من جوجل VertexAI - الدردشة فقط",
   router
