@@ -29,10 +29,16 @@ class VertexAI {
         
         const parts = [{ text: question }];
         
-        const r = await axios.post(`${this.api_url}/${this.model_url}/${model}:generateContent`, {
+        // استخدام الرابط الصحيح للـ API
+        const url = `${this.api_url}/${this.model_url}/${model}:generateContent`;
+        
+        console.log('Request URL:', url);
+        console.log('Request Headers:', this.headers);
+        
+        const requestBody = {
             contents: [
                 ...(system_instruction ? [{
-                    role: 'model',
+                    role: 'user',
                     parts: [{ text: system_instruction }]
                 }] : []),
                 {
@@ -45,12 +51,42 @@ class VertexAI {
                     googleSearch: {}
                 }]
             } : {})
-        }, {
-            headers: this.headers
-        });
+        };
         
-        if (r.status !== 200) throw new Error('No result found');
-        return r.data.candidates;
+        console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+        
+        try {
+            const r = await axios.post(url, requestBody, {
+                headers: this.headers,
+                timeout: 30000
+            });
+            
+            console.log('Response Status:', r.status);
+            console.log('Response Data:', JSON.stringify(r.data, null, 2));
+            
+            if (r.status !== 200) throw new Error(`API returned status ${r.status}`);
+            
+            if (!r.data.candidates || r.data.candidates.length === 0) {
+                throw new Error('No response generated from AI');
+            }
+            
+            return r.data.candidates;
+        } catch (error) {
+            console.error('API Error Details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                url: url
+            });
+            
+            if (error.response) {
+                throw new Error(`API Error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+            } else if (error.request) {
+                throw new Error('No response received from API server');
+            } else {
+                throw new Error(`Request setup error: ${error.message}`);
+            }
+        }
     }
 }
 
@@ -60,7 +96,7 @@ class VertexAI {
  *   /api/ai/chat?question=مرحبا&model=gemini-1.5-flash
  *   /api/ai/chat?question=ما هو الطقس؟&model=gemini-2.0-flash&search=true
  */
-router.get("/chatt", async (req, res) => {
+router.get("/chat", async (req, res) => {
     const { question, model = 'gemini-1.5-flash', search = false } = req.query;
     
     if (!question) {
@@ -79,7 +115,8 @@ router.get("/chatt", async (req, res) => {
             return res.status(400).json({
                 status: 400,
                 success: false,
-                message: `⚠️ النموذج غير مدعوم. النماذج المتاحة: ${vertexAI.model.chat.join(', ')}`
+                message: `⚠️ النموذج غير مدعوم. النماذج المتاحة: ${vertexAI.model.chat.join(', ')}`,
+                available_models: vertexAI.model.chat
             });
         }
         
@@ -88,14 +125,27 @@ router.get("/chatt", async (req, res) => {
             return res.status(400).json({
                 status: 400,
                 success: false,
-                message: `⚠️ البحث غير مدعوم لهذا النموذج. النماذج المدعومة للبحث: ${vertexAI.model.search.join(', ')}`
+                message: `⚠️ البحث غير مدعوم لهذا النموذج. النماذج المدعومة للبحث: ${vertexAI.model.search.join(', ')}`,
+                available_search_models: vertexAI.model.search
             });
         }
+
+        console.log(`Processing chat request:`, {
+            question,
+            model,
+            search: search === 'true'
+        });
 
         const response = await vertexAI.chat(question, { 
             model, 
             search: search === 'true' 
         });
+
+        // استخراج النص من الاستجابة
+        let answer = "لا توجد إجابة";
+        if (response && response[0] && response[0].content && response[0].content.parts) {
+            answer = response[0].content.parts.map(part => part.text).join(' ');
+        }
 
         res.json({
             status: 200,
@@ -103,14 +153,21 @@ router.get("/chatt", async (req, res) => {
             question: question,
             model: model,
             search: search === 'true',
-            response: response
+            answer: answer,
+            full_response: response
         });
     } catch (err) {
+        console.error('Chat endpoint error:', err);
         res.status(500).json({
             status: 500,
             success: false,
             message: "حدث خطأ أثناء معالجة الطلب.",
-            error: err.message
+            error: err.message,
+            debug: {
+                question: question,
+                model: model,
+                search: search
+            }
         });
     }
 });
@@ -132,9 +189,10 @@ router.get("/models", async (req, res) => {
                 search: vertexAI.model.search
             },
             usage: {
-                chat: `${global.t}/api/ai/chat?question=مرحبا&model=gemini-1.5-flash`,
-                chat_with_search: `${global.t}/api/ai/chat?question=ما هو الطقس؟&model=gemini-2.0-flash&search=true`
-            }
+                chat: `${global.t || 'http://localhost:3000'}/api/ai/chat?question=مرحبا&model=gemini-1.5-flash`,
+                chat_with_search: `${global.t || 'http://localhost:3000'}/api/ai/chat?question=ما هو الطقس؟&model=gemini-2.0-flash&search=true`
+            },
+            note: "استخدم النماذج المدعومة للبحث إذا أردت تفعيل خاصية البحث"
         });
     } catch (err) {
         res.status(500).json({
@@ -146,11 +204,37 @@ router.get("/models", async (req, res) => {
     }
 });
 
+/**
+ * نقطة النهاية للصحة
+ * مثال:
+ *   /api/ai/health
+ */
+router.get("/health", async (req, res) => {
+    try {
+        const vertexAI = new VertexAI();
+        
+        res.json({
+            status: 200,
+            success: true,
+            message: "VertexAI API is running",
+            timestamp: new Date().toISOString(),
+            available_models: vertexAI.model.chat.length
+        });
+    } catch (err) {
+        res.status(500).json({
+            status: 500,
+            success: false,
+            message: "Health check failed",
+            error: err.message
+        });
+    }
+});
+
 module.exports = {
   path: "/api/aii",
   name: "VertexAI",
   type: "aii",
-  url: `${global.t}/api/aii/chatt?question=مرحبا&model=gemini-1.5-flash`,
+  url: `${global.t}/api/aii/chat?question=مرحبا&model=gemini-1.5-flash`,
   logo: "https://qu.ax/obitoajajq.png",
   description: "واجهة برمجة تطبيقات الذكاء الاصطناعي من جوجل VertexAI - الدردشة فقط",
   router
