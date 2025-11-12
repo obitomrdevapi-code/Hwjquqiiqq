@@ -1,28 +1,30 @@
-// DeepInfra Model Scraper API
-// بسم الله الرحمن الرحيم ✨
-// استخراج قائمة الموديلات والرد على الأسئلة باستخدام DeepInfra
-
 const express = require("express");
 const axios = require("axios");
 
 const router = express.Router();
 
 /**
- * جلب قائمة الموديلات من DeepInfra
+ * قائمة الموديلات الثابتة
+ */
+const staticModels = [
+  "deepseek-ai/DeepSeek-V3.2-Exp",
+  "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+  "mistralai/Devstral-Small-2507",
+  "mistralai/Devstral-Small-2505",
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+  "meta-llama/Llama-3-8B-Instruct",
+  "meta-llama/Llama-3-70B-Instruct",
+  "google/gemma-7b-it",
+  "google/gemma-2b-it"
+];
+
+/**
+ * جلب قائمة الموديلات من القائمة الثابتة
  * @returns {Promise<Array>}
  */
 async function fetchModelList() {
-  const { data} = await axios.get("https://app.langdb.ai/provider/deepinfra");
-  const models = [];
-  const regex = /deepinfra\/([\w\-\/]+)/g;
-  const matches = data.match(regex);
-  if (matches) {
-    const unique = [...new Set(matches)];
-    for (let m of unique) {
-      models.push(m.replace("deepinfra/", ""));
-}
-}
-  return models;
+  return staticModels;
 }
 
 /**
