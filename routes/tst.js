@@ -74,7 +74,7 @@ router.get("/model/list", async (req, res) => {
  * نقطة النهاية للسؤال
  * مثال: /api/deepinfra?model=deepseek-ai/DeepSeek-V3.2-Exp&txt=ما هو الذكاء الاصطناعي؟
  */
-router.get("/", async (req, res) => {
+router.get("/deepInfra", async (req, res) => {
   const { model, txt} = req.query;
   if (!model ||!txt) {
     return res.status(400).json({
