@@ -1,7 +1,3 @@
-// بسم الله الرحمن الرحيم 🎨
-// DeepImg AI Image Generator API
-// توليد الصور باستخدام الذكاء الاصطناعي من DeepImg
-
 const express = require("express");
 const axios = require("axios");
 
@@ -98,7 +94,7 @@ async function generateDeepImage(prompt, options = {}) {
  * مثال:
  *   /api/deepimg?txt=فتاة ترتدي نظارات&style=anime&size=3:2
  */
-router.get("/img", async (req, res) => {
+router.get("/deepImg", async (req, res) => {
     const { txt, style = 'default', size = '1:1' } = req.query;
     
     if (!txt) {
@@ -143,7 +139,7 @@ router.get("/img", async (req, res) => {
  *     "size": "3:2" 
  *   }
  */
-router.post("/img", async (req, res) => {
+router.post("/deepImg", async (req, res) => {
     const { prompt, style = 'default', size = '1:1' } = req.body;
     
     if (!prompt) {
@@ -226,7 +222,7 @@ module.exports = {
     path: "/api/ai",
     name: "DeepImg AI Image Generator",
     type: "ai",
-    url: `${global.t}/api/ai/img?txt=فتاة ترتدي نظارات&style=anime&size=3:2`,
+    url: `${global.t}/api/ai/deepImg?txt=فتاة ترتدي نظارات&style=anime&size=3:2`,
     logo: "https://cdn-icons-png.flaticon.com/512/3131/3131626.png",
     description: "توليد الصور من النص باستخدام DeepImg AI مع أنماط متعددة",
     router
