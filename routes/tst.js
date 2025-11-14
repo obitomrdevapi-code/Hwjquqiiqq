@@ -268,7 +268,7 @@ router.get("/morocco_le360", async (req, res) => {
  * مثال:
  *   /morocco_le360?url=https://ar.le360.ma/politique/12345
  */
-router.get("/morocco_le360", async (req, res) => {
+router.get("/morocco_le360/get_news", async (req, res) => {
   const articleUrl = req.query.url;
   
   if (!articleUrl) {
