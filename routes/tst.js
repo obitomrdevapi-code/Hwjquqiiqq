@@ -1,39 +1,71 @@
-import express from "express";
-import axios from "axios";
-import CryptoJS from "crypto-js";
+// بسم الله الرحمن الرحيم ✨
+// Terabox Video Downloader API
+// تحميل الفيديوهات من موقع teraboxvideodownloader.pro
+
+const express = require("express");
+const axios = require("axios");
+const CryptoJS = require("crypto-js");
 
 const router = express.Router();
 const encryptionKey = "website:teraboxvideodownloader.pro";
 
-// ======== Helper Class ========
-class TeraboxDownloader {
-  async download(url) {
-    if (!url) throw new Error("Link missing.");
-
-    const encrypted = CryptoJS.AES.encrypt(url, encryptionKey).toString();
-    const res = await axios.post(
-      "https://teraboxvideodownloader.pro/api/video-downloader",
-      { link: encrypted },
-      { headers: { "Content-Type": "application/json" } }
-    );
-
-    return res.data;
-  }
+/**
+ * تشفير رابط الفيديو باستخدام AES
+ * @param {string} url - رابط الفيديو
+ * @returns {string} - الرابط المشفر
+ */
+function encryptUrl(url) {
+  return CryptoJS.AES.encrypt(url, encryptionKey).toString();
 }
 
-// ======== Router ========
-router.get("/terabox", async (req, res) => {
-  const { url } = req.query;
-  if (!url) return res.status(400).json({ success: false, error: "url is required" });
+/**
+ * إرسال الطلب إلى API teraboxvideodownloader.pro
+ * @param {string} encryptedUrl - الرابط المشفر
+ * @returns {Promise<object>}
+ */
+async function fetchVideoData(encryptedUrl) {
+  const { data} = await axios.post(
+    "https://teraboxvideodownloader.pro/api/video-downloader",
+    { link: encryptedUrl},
+    { headers: { "Content-Type": "application/json"}}
+);
+  return data;
+}
 
-  const downloader = new TeraboxDownloader();
+/**
+ * نقطة النهاية الرئيسية
+ * مثال:
+ *   /api/download/terabox?url=https://1024terabox.com/s/1REdTPbZqbw9RHZImo8QXOg
+ */
+router.get("/terabox", async (req, res) => {
+  const { url} = req.query;
+  if (!url) {
+    return res.status(400).json({
+      status: 400,
+      success: false,
+      message: "⚠️ يرجى إدخال رابط الفيديو"
+});
+}
+
   try {
-    const data = await downloader.download(url);
-    return res.json({ success: true, url, data });
-  } catch (error) {
-    console.error("[Terabox Router] Error:", error.message || error);
-    return res.status(500).json({ success: false, error: error.message || "Download failed" });
-  }
+    const encrypted = encryptUrl(url);
+    const videoData = await fetchVideoData(encrypted);
+
+    res.json({
+      status: 200,
+      success: true,
+      originalUrl: url,
+      data: videoData
+});
+} catch (err) {
+    console.error("[Terabox Router] Error:", err.message || err);
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: "حدث خطأ أثناء تحميل الفيديو.",
+      error: err.message
+});
+}
 });
 
 module.exports = {
