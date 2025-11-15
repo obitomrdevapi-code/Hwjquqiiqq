@@ -1,6 +1,6 @@
 // بسم الله الرحمن الرحيم ✨
 // WhatsApp Session Generator API
-// إنشاء جلسة واتساب وإرسالها عبر الرقم
+// إنشاء جلسة واتساب وإرسالها كرسالة نصية
 
 const express = require("express");
 const fs = require("fs");
@@ -17,22 +17,6 @@ const {
 const pn = require("awesome-phonenumber");
 
 const router = express.Router();
-
-/**
- * إزالة الملفات والمجلدات
- * @param {string} FilePath - مسار الملف/المجلد
- * @returns {boolean}
- */
-function removeFile(FilePath) {
-    try {
-        if (!fs.existsSync(FilePath)) return false;
-        fs.rmSync(FilePath, { recursive: true, force: true });
-        return true;
-    } catch (e) {
-        console.error('❌ خطأ في إزالة الملف:', e);
-        return false;
-    }
-}
 
 /**
  * التحقق من صحة الرقم الدولي
@@ -57,6 +41,34 @@ function validatePhoneNumber(num) {
             valid: false,
             message: "خطأ في التحقق من رقم الهاتف"
         };
+    }
+}
+
+/**
+ * تحويل ملف الجلسة إلى نص Base64
+ * @param {string} filePath - مسار ملف الجلسة
+ * @returns {string}
+ */
+function sessionToBase64(filePath) {
+    try {
+        const fileData = fs.readFileSync(filePath);
+        return fileData.toString('base64');
+    } catch (error) {
+        throw new Error('فشل في قراءة ملف الجلسة');
+    }
+}
+
+/**
+ * تنظيف الجلسة المؤقتة
+ * @param {string} dirPath - مسار المجلد
+ */
+function cleanupSession(dirPath) {
+    try {
+        if (fs.existsSync(dirPath)) {
+            fs.rmSync(dirPath, { recursive: true, force: true });
+        }
+    } catch (error) {
+        console.error('❌ خطأ في التنظيف:', error);
     }
 }
 
@@ -90,13 +102,10 @@ router.get("/session", async (req, res) => {
     }
 
     const cleanNum = validation.number;
-    const dirs = './session_' + cleanNum;
+    const sessionDir = `./temp_session_${cleanNum}_${Date.now()}`;
 
     try {
-        // تنظيف الجلسة السابقة إن وجدت
-        await removeFile(dirs);
-
-        const { state, saveCreds } = await useMultiFileAuthState(dirs);
+        const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
         const { version } = await fetchLatestBaileysVersion();
         
         const KnightBot = makeWASocket({
@@ -112,51 +121,61 @@ router.get("/session", async (req, res) => {
             generateHighQualityLinkPreview: false,
             defaultQueryTimeoutMs: 60000,
             connectTimeoutMs: 60000,
-            keepAliveIntervalMs: 10000,
         });
+
+        let sessionSent = false;
 
         // معالج تحديث الاتصال
         KnightBot.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
+            const { connection, lastDisconnect } = update;
 
-            if (qr) {
-                console.log("📟 تم إنشاء QR code");
-            }
-
-            if (connection === 'open') {
+            if (connection === 'open' && !sessionSent) {
                 console.log("✅ تم الاتصال بنجاح!");
+                sessionSent = true;
                 
                 try {
-                    const sessionKnight = fs.readFileSync(dirs + '/creds.json');
+                    // تحويل الجلسة إلى Base64
+                    const sessionBase64 = sessionToBase64(sessionDir + '/creds.json');
                     const userJid = jidNormalizedUser(cleanNum + '@s.whatsapp.net');
                     
-                    // إرسال ملف الجلسة
+                    // إرسال الجلسة كرسالة نصية
                     await KnightBot.sendMessage(userJid, {
-                        document: sessionKnight,
-                        mimetype: 'application/json',
-                        fileName: 'creds.json'
-                    });
-                    
-                    // إرسال رسالة تأكيد
-                    await KnightBot.sendMessage(userJid, {
-                        text: `✅ تم إنشاء الجلسة بنجاح!\n\n⚠️ لا تشارك هذا الملف مع أي شخص ⚠️`
+                        text: `🔐 *جلسة واتساب الخاصة بك*\n\n` +
+                              `📄 *معلومات الجلسة:*\n` +
+                              `• الرقم: ${cleanNum}\n` +
+                              `• الوقت: ${new Date().toLocaleString()}\n\n` +
+                              `📋 *بيانات الجلسة (Base64):*\n\`\`\`\n${sessionBase64}\n\`\`\`\n\n` +
+                              `⚠️ *تحذير هام:*\n` +
+                              `• لا تشارك هذه البيانات مع أي شخص\n` +
+                              `• احفظها في مكان آمن\n` +
+                              `• يمكنك استخدامها لاستعادة الجلسة\n\n` +
+                              `🎬 *دليل الاستخدام:*\n` +
+                              `https://youtu.be/-oz_u1iMgf8\n\n` +
+                              `┌┤✑  شكراً لاستخدامك Knight Bot\n` +
+                              `│└────────────┈ ⳹\n` +
+                              `│©2024 Mr Unique Hacker\n` +
+                              `└─────────────────┈ ⳹`
                     });
 
-                    // تنظيف الجلسة
-                    await delay(2000);
-                    removeFile(dirs);
+                    console.log("📨 تم إرسال الجلسة كرسالة نصية");
+
+                    // تنظيف الجلسة المؤقتة
+                    await delay(1000);
+                    cleanupSession(sessionDir);
                     
                     console.log("🎉 اكتملت العملية بنجاح!");
                     
                 } catch (error) {
-                    console.error("❌ خطأ في إرسال الرسائل:", error);
-                    removeFile(dirs);
+                    console.error("❌ خطأ في إرسال الرسالة:", error);
+                    cleanupSession(sessionDir);
                 }
             }
 
             if (connection === 'close') {
                 console.log("🔁 تم إغلاق الاتصال");
-                removeFile(dirs);
+                if (!sessionSent) {
+                    cleanupSession(sessionDir);
+                }
             }
         });
 
@@ -176,13 +195,14 @@ router.get("/session", async (req, res) => {
                     message: "تم إنشاء رمز الاقتران بنجاح",
                     data: {
                         number: cleanNum,
-                        pairing_code: code
+                        pairing_code: code,
+                        instructions: "ادخل هذا الكود في واتساب على هاتفك لتلقي بيانات الجلسة"
                     }
                 });
                 
             } catch (error) {
                 console.error('❌ خطأ في طلب رمز الاقتران:', error);
-                removeFile(dirs);
+                cleanupSession(sessionDir);
                 
                 return res.status(500).json({
                     status: 500,
@@ -198,7 +218,7 @@ router.get("/session", async (req, res) => {
 
     } catch (error) {
         console.error('❌ خطأ في بدء الجلسة:', error);
-        removeFile(dirs);
+        cleanupSession(sessionDir);
         
         return res.status(500).json({
             status: 500,
@@ -215,6 +235,6 @@ module.exports = {
   type: "tools",
   url: `${global.t}/api/tools/session?num=15551234567`,
   logo: "https://cdn-icons-png.flaticon.com/512/124/124034.png",
-  description: "إنشاء جلسة واتساب عبر الرقم الدولي",
+  description: "إنشاء جلسة واتساب وإرسالها كرسالة نصية",
   router
 };
