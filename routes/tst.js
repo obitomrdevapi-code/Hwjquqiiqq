@@ -61,144 +61,6 @@ function validatePhoneNumber(num) {
 }
 
 /**
- * بدء جلسة واتساب وإنشاء QR
- * @param {string} num - رقم الهاتف
- * @param {object} res - كائن الاستجابة
- */
-async function initiateSession(num, res) {
-    const dirs = './' + (num || `session`);
-    
-    // تنظيف الجلسة السابقة إن وجدت
-    await removeFile(dirs);
-
-    const { state, saveCreds } = await useMultiFileAuthState(dirs);
-
-    try {
-        const { version } = await fetchLatestBaileysVersion();
-        
-        const KnightBot = makeWASocket({
-            version,
-            auth: {
-                creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-            },
-            printQRInTerminal: false,
-            logger: pino({ level: "fatal" }).child({ level: "fatal" }),
-            browser: Browsers.windows('Chrome'),
-            markOnlineOnConnect: false,
-            generateHighQualityLinkPreview: false,
-            defaultQueryTimeoutMs: 60000,
-            connectTimeoutMs: 60000,
-            keepAliveIntervalMs: 30000,
-            retryRequestDelayMs: 250,
-            maxRetries: 5,
-        });
-
-        KnightBot.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, isNewLogin, isOnline } = update;
-
-            if (connection === 'open') {
-                console.log("✅ تم الاتصال بنجاح!");
-                console.log("📱 جاري إرسال ملف الجلسة للمستخدم...");
-                
-                try {
-                    const sessionKnight = fs.readFileSync(dirs + '/creds.json');
-
-                    // إرسال ملف الجلسة للمستخدم
-                    const userJid = jidNormalizedUser(num + '@s.whatsapp.net');
-                    await KnightBot.sendMessage(userJid, {
-                        document: sessionKnight,
-                        mimetype: 'application/json',
-                        fileName: 'creds.json'
-                    });
-                    console.log("📄 تم إرسال ملف الجلسة بنجاح");
-
-                    // إرسال الفيديو التوضيحي
-                    await KnightBot.sendMessage(userJid, {
-                        image: { url: 'https://img.youtube.com/vi/-oz_u1iMgf8/maxresdefault.jpg' },
-                        caption: `🎬 *KnightBot MD V2.0 دليل الإعداد الكامل!*\n\n🚀 إصلاح الأخطاء + أوامر جديدة + دردشة ذكية سريعة\n📺 شاهد الآن: https://youtu.be/-oz_u1iMgf8`
-                    });
-                    console.log("🎬 تم إرسال الدليل بنجاح");
-
-                    // إرسال رسالة تحذير
-                    await KnightBot.sendMessage(userJid, {
-                        text: `⚠️ لا تشارك هذا الملف مع أي شخص ⚠️\n 
-┌┤✑  شكراً لاستخدامك Knight Bot
-│└────────────┈ ⳹        
-│©2024 Mr Unique Hacker 
-└─────────────────┈ ⳹\n\n`
-                    });
-                    console.log("⚠️ تم إرسال رسالة التحذير بنجاح");
-
-                    // تنظيف الجلسة بعد الاستخدام
-                    console.log("🧹 جاري تنظيف الجلسة...");
-                    await delay(1000);
-                    removeFile(dirs);
-                    console.log("✅ تم تنظيف الجلسة بنجاح");
-                    console.log("🎉 اكتملت العملية بنجاح!");
-                } catch (error) {
-                    console.error("❌ خطأ في إرسال الرسائل:", error);
-                    removeFile(dirs);
-                }
-            }
-
-            if (isNewLogin) {
-                console.log("🔐 تسجيل دخول جديد عبر رمز الاقتران");
-            }
-
-            if (isOnline) {
-                console.log("📶 العميل متصل بالإنترنت");
-            }
-
-            if (connection === 'close') {
-                const statusCode = lastDisconnect?.error?.output?.statusCode;
-
-                if (statusCode === 401) {
-                    console.log("❌ تم تسجيل الخروج من واتساب. تحتاج إلى إنشاء رمز اقتران جديد.");
-                } else {
-                    console.log("🔁 تم إغلاق الاتصال - إعادة التشغيل...");
-                    initiateSession(num, res);
-                }
-            }
-        });
-
-        if (!KnightBot.authState.creds.registered) {
-            await delay(3000);
-            const cleanNum = num.replace(/[^\d+]/g, '');
-            
-            try {
-                let code = await KnightBot.requestPairingCode(cleanNum);
-                code = code?.match(/.{1,4}/g)?.join('-') || code;
-                if (!res.headersSent) {
-                    console.log({ num: cleanNum, code });
-                    res.send({ code });
-                }
-            } catch (error) {
-                console.error('خطأ في طلب رمز الاقتران:', error);
-                if (!res.headersSent) {
-                    res.status(503).send({ 
-                        status: 503,
-                        success: false,
-                        message: 'فشل في الحصول على رمز الاقتران. يرجى التحقق من رقم هاتفك والمحاولة مرة أخرى.'
-                    });
-                }
-            }
-        }
-
-        KnightBot.ev.on('creds.update', saveCreds);
-    } catch (err) {
-        console.error('خطأ في بدء الجلسة:', err);
-        if (!res.headersSent) {
-            res.status(503).send({ 
-                status: 503,
-                success: false,
-                message: 'الخدمة غير متاحة'
-            });
-        }
-    }
-}
-
-/**
  * نقطة النهاية الرئيسية
  * مثال:
  *   /api/whatsapp/session?num=15551234567
@@ -227,38 +89,124 @@ router.get("/session", async (req, res) => {
         });
     }
 
-    num = validation.number;
+    const cleanNum = validation.number;
+    const dirs = './session_' + cleanNum;
 
     try {
-        await initiateSession(num, res);
-    } catch (error) {
-        console.error('❌ خطأ في العملية:', error);
-        if (!res.headersSent) {
-            res.status(500).json({
-                status: 500,
-                success: false,
-                message: "حدث خطأ أثناء إنشاء الجلسة",
-                error: error.message
-            });
-        }
-    }
-});
+        // تنظيف الجلسة السابقة إن وجدت
+        await removeFile(dirs);
 
-// معالج الاستثناءات العام
-process.on('uncaughtException', (err) => {
-    let e = String(err);
-    if (e.includes("conflict")) return;
-    if (e.includes("not-authorized")) return;
-    if (e.includes("Socket connection timeout")) return;
-    if (e.includes("rate-overlimit")) return;
-    if (e.includes("Connection Closed")) return;
-    if (e.includes("Timed Out")) return;
-    if (e.includes("Value not found")) return;
-    if (e.includes("Stream Errored")) return;
-    if (e.includes("Stream Errored (restart required)")) return;
-    if (e.includes("statusCode: 515")) return;
-    if (e.includes("statusCode: 503")) return;
-    console.log('📌 استثناء تم التقاطه: ', err);
+        const { state, saveCreds } = await useMultiFileAuthState(dirs);
+        const { version } = await fetchLatestBaileysVersion();
+        
+        const KnightBot = makeWASocket({
+            version,
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
+            },
+            printQRInTerminal: false,
+            logger: pino({ level: "fatal" }).child({ level: "fatal" }),
+            browser: Browsers.windows('Chrome'),
+            markOnlineOnConnect: false,
+            generateHighQualityLinkPreview: false,
+            defaultQueryTimeoutMs: 60000,
+            connectTimeoutMs: 60000,
+            keepAliveIntervalMs: 10000,
+        });
+
+        // معالج تحديث الاتصال
+        KnightBot.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect, qr } = update;
+
+            if (qr) {
+                console.log("📟 تم إنشاء QR code");
+            }
+
+            if (connection === 'open') {
+                console.log("✅ تم الاتصال بنجاح!");
+                
+                try {
+                    const sessionKnight = fs.readFileSync(dirs + '/creds.json');
+                    const userJid = jidNormalizedUser(cleanNum + '@s.whatsapp.net');
+                    
+                    // إرسال ملف الجلسة
+                    await KnightBot.sendMessage(userJid, {
+                        document: sessionKnight,
+                        mimetype: 'application/json',
+                        fileName: 'creds.json'
+                    });
+                    
+                    // إرسال رسالة تأكيد
+                    await KnightBot.sendMessage(userJid, {
+                        text: `✅ تم إنشاء الجلسة بنجاح!\n\n⚠️ لا تشارك هذا الملف مع أي شخص ⚠️`
+                    });
+
+                    // تنظيف الجلسة
+                    await delay(2000);
+                    removeFile(dirs);
+                    
+                    console.log("🎉 اكتملت العملية بنجاح!");
+                    
+                } catch (error) {
+                    console.error("❌ خطأ في إرسال الرسائل:", error);
+                    removeFile(dirs);
+                }
+            }
+
+            if (connection === 'close') {
+                console.log("🔁 تم إغلاق الاتصال");
+                removeFile(dirs);
+            }
+        });
+
+        // طلب pairing code إذا لم يكن مسجلاً
+        if (!KnightBot.authState.creds.registered) {
+            await delay(2000);
+            
+            try {
+                let code = await KnightBot.requestPairingCode(cleanNum);
+                code = code?.match(/.{1,4}/g)?.join('-') || code;
+                
+                console.log("📞 تم طلب pairing code للرقم:", cleanNum);
+                
+                return res.json({
+                    status: 200,
+                    success: true,
+                    message: "تم إنشاء رمز الاقتران بنجاح",
+                    data: {
+                        number: cleanNum,
+                        pairing_code: code
+                    }
+                });
+                
+            } catch (error) {
+                console.error('❌ خطأ في طلب رمز الاقتران:', error);
+                removeFile(dirs);
+                
+                return res.status(500).json({
+                    status: 500,
+                    success: false,
+                    message: "فشل في الحصول على رمز الاقتران",
+                    error: error.message
+                });
+            }
+        }
+
+        // تحديث credentials
+        KnightBot.ev.on('creds.update', saveCreds);
+
+    } catch (error) {
+        console.error('❌ خطأ في بدء الجلسة:', error);
+        removeFile(dirs);
+        
+        return res.status(500).json({
+            status: 500,
+            success: false,
+            message: "حدث خطأ أثناء إنشاء الجلسة",
+            error: error.message
+        });
+    }
 });
 
 module.exports = {
