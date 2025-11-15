@@ -112,10 +112,10 @@ router.get("/session", async (req, res) => {
             version,
             auth: {
                 creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
+                keys: makeCacheableSignalKeyStore(state.keys, pino().child({ level: "fatal" })),
             },
             printQRInTerminal: false,
-            logger: pino({ level: "fatal" }).child({ level: "fatal" }),
+            logger: pino().child({ level: "fatal" }),
             browser: Browsers.windows('Chrome'),
             markOnlineOnConnect: false,
             generateHighQualityLinkPreview: false,
