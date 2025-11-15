@@ -99,7 +99,7 @@ router.get("/fasrly/health", async (req, res) => {
 });
 
 module.exports = {
-  path: "/api/aslam",
+  path: "/api/islam",
   name: "fasrly",
   type: "islam",
   url: `${global.t}/api/islam/fasrly?txt=كلب في المنام`,
