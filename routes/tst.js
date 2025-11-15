@@ -1,6 +1,6 @@
 // بسم الله الرحمن الرحيم ✨
 // Facebook Videos Scraper API
-// استخراج فيديوهات الفيسبوك من المغرب باستخدام Google Search API
+// استخراج فيديوهات الفيسبوك من المغرب باستخدام Google Search
 
 const express = require("express");
 const axios = require("axios");
@@ -14,134 +14,123 @@ const router = express.Router();
  * @returns {Promise<Array>}
  */
 async function searchFacebookVideos(query = "المغرب") {
-  const url = `https://www.google.com/complete/search`;
+  const searchUrl = `https://www.google.com/search`;
   
   const params = {
     q: `site:facebook.com/videos ${query}`,
-    cp: 0,
-    client: "mobile-gws-modeless-video",
-    xssi: "t",
-    gs_pcrt: 2,
-    ds: "v",
-    hl: "ar-SG",
-    authuser: 0,
-    pq: `facebook.com/videos ${query}`,
-    psi: "mOEYacjrIODfseMPi_LkyA0.1763238292775",
-    dpr: 1.75,
-    pfq: `facebook.com/videos ${query}`
+    tbm: "vid", // بحث فيديوهات
+    hl: "ar",
+    gl: "ma", // المغرب
+    num: 50 // عدد النتائج
   };
 
   const headers = {
     'authority': 'www.google.com',
-    'accept': '*/*',
+    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'accept-language': 'ar-AE,ar;q=0.9,fr-MA;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
-    'cookie': 'AEC=AaJma5taCG4SpqSw14MOv4O5Uowl-yQXMdTpgSHnuJnyCgpeMwj7rRCFboE; NID=526=Lb8RF5NvIUBGYcGM5ZaO47lldkBrFK1hRUjJMNhCqec3iDelkOXNczwZXDvsMfLPjQWrq35Zuq8Ac4nESaQPA5yb_B3EmGUU4KYG4INrIKKiDjWir1LsrAae7I4jEmTKFSsZHo2xNpsiRvRtzh3VSL_cOUOdiVIgchySelnwir0MesQ5lWADuiIXwH4CN1pPW4PCEP-ptYr3hvAXfaMpoOi5PZdolw1ALtST5juErJ0yH9DO-cjSmkxULoEFHQ',
-    'downlink': '0.35',
-    'referer': 'https://www.google.com/',
-    'rtt': '800',
-    'sec-ch-prefers-color-scheme': 'light',
+    'cache-control': 'max-age=0',
     'sec-ch-ua': '"Chromium";v="107", "Not=A?Brand";v="24"',
-    'sec-ch-ua-arch': '',
-    'sec-ch-ua-bitness': '',
-    'sec-ch-ua-full-version': '"107.0.5304.74"',
-    'sec-ch-ua-full-version-list': '"Chromium";v="107.0.5304.74", "Not=A?Brand";v="24.0.0.0"',
     'sec-ch-ua-mobile': '?1',
-    'sec-ch-ua-model': '"SM-A217F"',
     'sec-ch-ua-platform': '"Android"',
-    'sec-ch-ua-platform-version': '"12.0.0"',
-    'sec-ch-ua-wow64': '?0',
-    'sec-fetch-dest': 'empty',
-    'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-origin',
-    'user-agent': 'Mozilla/5.0 (Linux; Android 12; SM-A217F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36',
-    'x-client-data': 'CN/4ygE='
+    'sec-fetch-dest': 'document',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-site': 'none',
+    'sec-fetch-user': '?1',
+    'upgrade-insecure-requests': '1',
+    'user-agent': 'Mozilla/5.0 (Linux; Android 12; SM-A217F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36'
   };
 
   try {
-    const response = await axios.get(url, { params, headers });
-    
-    // معالجة الاستجابة لاستخراج النتائج
-    const results = parseGoogleResponse(response.data);
-    return results;
+    console.log(`🔍 جاري البحث عن: ${query}`);
+    const response = await axios.get(searchUrl, { params, headers });
+    const videos = parseGoogleSearchResults(response.data);
+    console.log(`✅ تم العثور على ${videos.length} فيديو`);
+    return videos;
     
   } catch (error) {
-    console.error('Error searching Facebook videos:', error.message);
+    console.error('❌ خطأ في البحث:', error.message);
     throw new Error('فشل في جلب النتائج من جوجل');
   }
 }
 
 /**
- * تحليل استجابة جوجل واستخراج النتائج
- * @param {string} data - البيانات الخام من جوجل
+ * تحليل نتائج بحث جوجل
+ * @param {string} html - HTML من جوجل
  * @returns {Array}
  */
-function parseGoogleResponse(data) {
-  const results = [];
-  
-  try {
-    // إزالة البادئة من استجابة جوجل
-    const cleanData = data.replace(/^\)\]\}'/, '');
-    const jsonData = JSON.parse(cleanData);
-    
-    // استخراج الاقتراحات والنتائج
-    if (jsonData[1] && Array.isArray(jsonData[1])) {
-      jsonData[1].forEach(item => {
-        if (item[0] && typeof item[0] === 'string') {
-          // استخراج الروابط من النص
-          const videoLinks = extractVideoLinks(item[0]);
-          results.push(...videoLinks);
-        }
-      });
-    }
-    
-  } catch (error) {
-    console.error('Error parsing Google response:', error.message);
-  }
-  
-  return results;
-}
+function parseGoogleSearchResults(html) {
+  const $ = cheerio.load(html);
+  const videos = [];
 
-/**
- * استخراج روابط الفيديوهات من النص
- * @param {string} text - النص المحتوي على الروابط
- * @returns {Array}
- */
-function extractVideoLinks(text) {
-  const links = [];
-  const videoRegex = /https:\/\/www\.facebook\.com\/[^"'\s]+\/videos\/[^"'\s]+/g;
-  const matches = text.match(videoRegex);
-  
-  if (matches) {
-    matches.forEach(match => {
-      if (match.includes('/videos/')) {
-        links.push({
-          url: match,
-          title: extractVideoTitle(match),
+  // البحث عن عناصر الفيديوهات
+  $('div.g').each((index, element) => {
+    const $element = $(element);
+    
+    // استخراج الرابط
+    const link = $element.find('a').attr('href');
+    if (link && link.includes('facebook.com') && link.includes('/videos/')) {
+      const videoUrl = extractFacebookVideoUrl(link);
+      const title = $element.find('h3').text() || 'فيديو فيسبوك';
+      const description = $element.find('.VwiC3b').text() || '';
+      const thumbnail = $element.find('img').attr('src') || '';
+      
+      if (videoUrl) {
+        videos.push({
+          url: videoUrl,
+          title: title.trim(),
+          description: description.trim(),
+          thumbnail: thumbnail,
           source: 'facebook'
         });
       }
+    }
+  });
+
+  // إذا لم نجد نتائج بالطريقة الأولى، نجرب طريقة بديلة
+  if (videos.length === 0) {
+    $('a').each((index, element) => {
+      const href = $(element).attr('href');
+      if (href && href.includes('facebook.com') && href.includes('/videos/')) {
+        const videoUrl = extractFacebookVideoUrl(href);
+        if (videoUrl && !videos.find(v => v.url === videoUrl)) {
+          videos.push({
+            url: videoUrl,
+            title: 'فيديو فيسبوك',
+            description: '',
+            thumbnail: '',
+            source: 'facebook'
+          });
+        }
+      }
     });
   }
-  
-  return links;
+
+  return videos;
 }
 
 /**
- * استخراج عنوان الفيديو من الرابط
- * @param {string} url - رابط الفيديو
+ * استخراج رابط فيديو الفيسبوك من رابط جوجل
+ * @param {string} googleUrl - رابط من جوجل
  * @returns {string}
  */
-function extractVideoTitle(url) {
+function extractFacebookVideoUrl(googleUrl) {
   try {
-    // استخراج الجزء المهم من الرابط
-    const parts = url.split('/');
-    const videoPart = parts.find(part => part.includes('videos'));
-    if (videoPart) {
-      return `فيديو فيسبوك - ${videoPart}`;
+    // رابط جوجل عادة يكون بهذا الشكل: /url?q=https://facebook.com/...
+    const urlParams = new URLSearchParams(googleUrl.split('?')[1]);
+    const actualUrl = urlParams.get('q');
+    
+    if (actualUrl && actualUrl.includes('facebook.com/videos/')) {
+      return decodeURIComponent(actualUrl);
     }
-    return 'فيديو فيسبوك';
+    
+    // إذا كان الرابط مباشر
+    if (googleUrl.includes('facebook.com/videos/')) {
+      return decodeURIComponent(googleUrl);
+    }
+    
+    return null;
   } catch (error) {
-    return 'فيديو فيسبوك';
+    return null;
   }
 }
 
@@ -151,18 +140,25 @@ function extractVideoTitle(url) {
  * @param {number} maxResults - الحد الأقصى للنتائج
  * @returns {Promise<Array>}
  */
-async function advancedFacebookSearch(query, maxResults = 50) {
+async function advancedFacebookSearch(query, maxResults = 30) {
   const allResults = [];
+  
+  // مصطلحات بحث مختلفة للحصول على نتائج أكثر
   const searchTerms = [
     `${query} المغرب`,
     `${query} maroc`,
     `${query} morocco`,
-    `${query} فيديو`
+    `${query} فيديو`,
+    `${query} facebook video`
   ];
   
   for (const searchTerm of searchTerms) {
     try {
+      if (allResults.length >= maxResults) break;
+      
+      console.log(`🔎 البحث باستخدام: "${searchTerm}"`);
       const results = await searchFacebookVideos(searchTerm);
+      
       results.forEach(result => {
         // تجنب التكرار
         if (!allResults.find(r => r.url === result.url)) {
@@ -170,16 +166,11 @@ async function advancedFacebookSearch(query, maxResults = 50) {
         }
       });
       
-      // إذا وصلنا للحد المطلوب نوقف
-      if (allResults.length >= maxResults) {
-        break;
-      }
-      
       // تأخير بين الطلبات لتجنب الحظر
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
     } catch (error) {
-      console.error(`Error searching for: ${searchTerm}`, error.message);
+      console.error(`⚠️ خطأ في البحث عن: ${searchTerm}`, error.message);
       continue;
     }
   }
@@ -191,11 +182,11 @@ async function advancedFacebookSearch(query, maxResults = 50) {
  * نقطة النهاية الرئيسية
  * مثال:
  *   /api/facebook/videos?query=المغرب
- *   /api/facebook/videos?query=كرة قدم
+ *   /api/facebook/videos?query=اوبيتو
  */
 router.get("/facebook", async (req, res) => {
   const query = req.query.query || "المغرب";
-  const maxResults = parseInt(req.query.max) || 50;
+  const maxResults = parseInt(req.query.max) || 30;
 
   if (!query.trim()) {
     return res.status(400).json({
@@ -206,6 +197,7 @@ router.get("/facebook", async (req, res) => {
   }
 
   try {
+    console.log(`🎬 بدء البحث عن فيديوهات: "${query}"`);
     const videos = await advancedFacebookSearch(query, maxResults);
 
     res.json({
@@ -218,6 +210,7 @@ router.get("/facebook", async (req, res) => {
     });
 
   } catch (error) {
+    console.error('❌ خطأ في API:', error.message);
     res.status(500).json({
       status: 500,
       success: false,
@@ -231,9 +224,9 @@ router.get("/facebook", async (req, res) => {
 /**
  * نقطة نهاية للبحث السريع
  * مثال:
- *   /api/facebook/search?q=المغرب
+ *   /api/facebook/search?q=اوبيتو
  */
-router.get("/facebook2", async (req, res) => {
+router.get("/facebook1", async (req, res) => {
   const q = req.query.q;
   
   if (!q || q.trim() === "") {
@@ -266,17 +259,44 @@ router.get("/facebook2", async (req, res) => {
 });
 
 /**
+ * نقطة نهاية للبحث عن فيديوهات مغربية عامة
+ */
+router.get("/morocco", async (req, res) => {
+  try {
+    const videos = await advancedFacebookSearch("المغرب", 20);
+
+    res.json({
+      status: 200,
+      success: true,
+      category: "فيديوهات مغربية",
+      totalResults: videos.length,
+      videos: videos,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: 500,
+      success: false,
+      message: "فشل في جلب الفيديوهات المغربية",
+      error: error.message
+    });
+  }
+});
+
+/**
  * نقطة نهاية للصحة
  */
 router.get("/health", async (req, res) => {
   try {
     // اختبار اتصال بسيط
-    await searchFacebookVideos("test");
+    const testResults = await searchFacebookVideos("test");
     
     res.json({
       status: 200,
       success: true,
       message: "✅ خدمة فيديوهات الفيسبوك تعمل بشكل طبيعي",
+      testResults: testResults.length,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -293,7 +313,7 @@ module.exports = {
   path: "/api/search",
   name: "facebook videos",
   type: "search",
-  url: `${global.t}/api/search/facebook?query=المغرب`,
+  url: `${global.t}/api/search/facebook?query=اوبيتو`,
   logo: "https://cdn-icons-png.flaticon.com/512/124/124010.png",
   description: "البحث عن فيديوهات الفيسبوك من المغرب",
   router
